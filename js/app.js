@@ -2,7 +2,7 @@
 // Suwar – Oberfläche. Galerie, Großansicht, Aufräumen, Teilen, Hochladen, Einstellungen.
 /* global NC, Medien, SuwarStandort */
 (() => {
-  const VERSION = '0.1.2';
+  const VERSION = '0.1.3';
   const app = document.getElementById('app');
   const pad = (n) => String(n).padStart(2, '0');
   const istAndroid = /Android/i.test(navigator.userAgent);
@@ -390,11 +390,11 @@
         m.video ? h('button', { id: 'standbild', disabled: true, onclick: () => standbild(m) }, ic('kamera'), 'Standbild') : null,
         h('button', { onclick: () => herunterladen([m.id]) }, ic('laden'), 'Laden'),
         h('button', { onclick: () => loeschenFragen([m.id], () => { liste.splice(i, 1); if (i >= liste.length) i = liste.length - 1; zeigen(); }) }, ic('papierkorb'), 'Löschen'));
-      const klein = await vorschauUrl(m, 256).catch(() => null);
-      if (liste[i] !== m) return;
       if (m.video) {
+        const klein = await vorschauUrl(m, 512).catch(() => null);
+        if (liste[i] !== m) return;
         const lade = h('div', { class: 'lade' }, 'Video wird geladen …');
-        fuelle(buehne, klein ? h('img', { src: klein, alt: '' }) : '', lade);
+        fuelle(buehne, klein ? h('img', { class: 'voll', src: klein, alt: '' }) : '', lade);
         abbruch = new AbortController();
         try {
           const blob = await NC.holen(m.pfad, { signal: abbruch.signal, fortschritt: (p) => { lade.textContent = `Video wird geladen … ${Math.round(p * 100)} %`; } });
@@ -406,17 +406,27 @@
         } catch (e) { if (e.name !== 'AbortError') lade.textContent = 'Video nicht geladen: ' + e.message; }
         return;
       }
-      const img = h('img', { alt: m.name, src: klein || '' });
+      // Erst ein kleines Bild mit echtem Seitenverhältnis in voller Anzeigegröße (unscharf), dann dasselbe scharf:
+      // Größe und Form bleiben gleich, das Bild wird nur „nachgeschärft“.
+      const img = h('img', { class: 'voll', alt: m.name });
       fuelle(buehne, img);
+      const mittel = await vorschauUrl(m, 512).catch(() => null);
+      if (liste[i] !== m) return;
+      if (mittel) img.src = mittel;
+      for (const n of [liste[i + 1], liste[i - 1]]) if (n && !n.video) vorschauUrl(n, 512).catch(() => {});
       try {
         let gross = null;
         if (vorschauGeht !== false) gross = await NC.vorschau(m.id, 2048).catch(() => null);
         if (!gross) gross = await NC.holen(m.pfad);
         if (liste[i] !== m) return;
         const u = URL.createObjectURL(gross);
-        img.onload = () => setTimeout(() => URL.revokeObjectURL(u), 1000);
+        const neu = new Image();
+        neu.src = u;
+        await neu.decode().catch(() => {}); // erst fertig entschlüsseln, dann tauschen – kein Flackern
+        if (liste[i] !== m) { URL.revokeObjectURL(u); return; }
         img.src = u;
-      } catch (e) { if (!klein) fuelle(buehne, h('div', { class: 'lade' }, 'Bild nicht geladen: ' + e.message)); }
+        setTimeout(() => URL.revokeObjectURL(u), 60000);
+      } catch (e) { if (!mittel) fuelle(buehne, h('div', { class: 'lade' }, 'Bild nicht geladen: ' + e.message)); }
     }
     function blaettern(r) { const n = i + r; if (n < 0 || n >= liste.length) return; i = n; zeigen(); }
     let x0 = null;
@@ -649,9 +659,14 @@
         h('div', { class: 'zeile' }, a.verlauf.length ? h('button', { class: 'knopf', onclick: rueckgaengig }, ic('rueckgaengig', 18), 'Rückgängig') : null, h('button', { class: 'knopf haupt', onclick: () => wechseln('galerie') }, 'Zur Galerie')))), leiste()];
     }
     const img = h('img', { alt: m.name });
-    vorschauUrl(m, 256).then((u) => { if (u && !img.src) img.src = u; });
-    vorschauUrl(m, 1024).then((u) => { if (u) img.src = u; }).catch(() => {});
-    if (a.warte[a.index + 1]) vorschauUrl(a.warte[a.index + 1], 1024).catch(() => {});
+    let scharf = false;
+    vorschauUrl(m, 512).then((u) => { if (u && !scharf) img.src = u; }).catch(() => {});
+    vorschauUrl(m, 1024).then(async (u) => {
+      if (!u) return;
+      const neu = new Image(); neu.src = u; await neu.decode().catch(() => {});
+      scharf = true; img.src = u;
+    }).catch(() => {});
+    for (const n of a.warte.slice(a.index + 1, a.index + 3)) { vorschauUrl(n, 512).catch(() => {}); vorschauUrl(n, 1024).catch(() => {}); }
     const weg = h('div', { class: 'stempel weg' }, 'LÖSCHEN');
     const bleibt = h('div', { class: 'stempel bleibt' }, 'BEHALTEN');
     const karte = h('div', { class: 'foto-karte', role: 'group', 'aria-label': 'Aktuelles Foto' },
