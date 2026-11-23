@@ -67,7 +67,7 @@ a { color: var(--akzent); }
 .karte h2 { margin: 0; font-size: 17px; font-weight: 600; }
 .karte p { margin: 0; color: var(--text2); line-height: 1.55; font-size: 14px; }
 label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text2); }
-.feld input, .feld select, .feld textarea { height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--rand); background: var(--grund); font-size: 15px; color: var(--text); }
+.feld input, .feld select, .feld textarea { width: 100%; min-width: 0; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--rand); background: var(--grund); font-size: 15px; color: var(--text); }
 .feld textarea { height: 80px; padding: 10px 12px; }
 .knopf { height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--rand); background: var(--chip); font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; color: var(--text); }
 .knopf.haupt { background: var(--text); color: #fff; border-color: var(--text); }
@@ -75,6 +75,10 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; c
 .knopf:disabled { opacity: .5; }
 .zeile { display: flex; gap: 10px; align-items: center; }
 .zeile > .knopf { flex: 1; }
+/* Feld neben Knopf oder Feld: Felder teilen sich die Breite, nichts ragt über die Karte hinaus */
+.zeile > .feld { flex: 1; min-width: 0; }
+.zeile:has(> .feld) { align-items: flex-end; }
+.zeile:has(> .feld) > .knopf { flex: none; }
 .liste { display: flex; flex-direction: column; }
 .liste > * { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rand); }
 .liste > *:last-child { border-bottom: none; }
