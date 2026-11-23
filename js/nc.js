@@ -8,13 +8,15 @@ const NC = (() => {
   const DAV = 'DAV:';
   const OC = 'http://owncloud.org/ns';
   const NCNS = 'http://nextcloud.org/ns';
-  let konto = null; // { server, user, pass }
+  let konto = null; // { server, user (Anmeldename), pass, uid (interne Benutzer-ID für WebDAV-Pfade) }
 
   const b64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
   const auth = () => 'Basic ' + b64(konto.user + ':' + konto.pass);
   const kodieren = (pfad) => pfad.split('/').map(encodeURIComponent).join('/');
   const davBasis = () => konto.server + '/remote.php/dav';
-  const dateiUrl = (pfad) => `${davBasis()}/files/${encodeURIComponent(konto.user)}${kodieren(pfad)}`;
+  const uid = () => konto.uid || konto.user;
+  const dateiUrl = (pfad) => `${davBasis()}/files/${encodeURIComponent(uid())}${kodieren(pfad)}`;
+  const xmlText = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const etagSauber = (e) => (e || '').replace(/^W\//, '');
 
   class NcFehler extends Error { constructor(text, status) { super(text); this.status = status; } }
@@ -48,12 +50,23 @@ const NC = (() => {
   }
   const txt = (p, n) => (p[n] ? p[n].textContent : '');
   // Pfad relativ zum Dateibereich des Kontos aus dem href ermitteln
+  // Pfad relativ zum Dateibereich: alles nach /remote.php/dav/files/<Benutzer-ID> – unabhängig davon, wie die ID lautet
   function pfadAus(href) {
-    const marke = `/files/${konto.user}`;
-    const i = href.indexOf(marke);
-    let p = i >= 0 ? href.slice(i + marke.length) : href;
+    const m = href.match(/\/remote\.php\/dav\/files\/[^/]+(\/.*)?$/);
+    let p = m ? m[1] || '/' : href;
     if (!p.startsWith('/')) p = '/' + p;
     return p.length > 1 ? p.replace(/\/$/, '') : p;
+  }
+  // Interne Benutzer-ID abfragen (die Nextcloud erlaubt die Anmeldung auch mit E-Mail oder anderem Namen)
+  async function benutzerId() {
+    const body = '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>';
+    const r = await anfrage('PROPFIND', davBasis() + '/', { headers: { Depth: '0', 'Content-Type': 'application/xml; charset=utf-8' }, body });
+    if (r.status >= 400) throw new NcFehler(`Benutzer nicht ermittelt (Fehler ${r.status})`, r.status);
+    const doc = new DOMParser().parseFromString(await r.text(), 'application/xml');
+    const p = doc.getElementsByTagNameNS(DAV, 'current-user-principal')[0];
+    const href = p && p.getElementsByTagNameNS(DAV, 'href')[0];
+    const m = href && decodeURIComponent(href.textContent).match(/principals\/users\/([^/]+)/);
+    return m ? m[1] : konto.user;
   }
 
   /* ---------- Dateien ---------- */
@@ -159,7 +172,7 @@ const NC = (() => {
 <d:searchrequest xmlns:d="DAV:" xmlns:oc="${OC}" xmlns:nc="${NCNS}" xmlns:ns="https://github.com/icewind1991/SearchDAV/ns">
  <d:basicsearch>
   <d:select><d:prop>${SUCH_PROPS}</d:prop></d:select>
-  <d:from><d:scope><d:href>/files/${konto.user}${ordner}</d:href><d:depth>infinity</d:depth></d:scope></d:from>
+  <d:from><d:scope><d:href>/files/${xmlText(uid())}${xmlText(ordner)}</d:href><d:depth>infinity</d:depth></d:scope></d:from>
   <d:where>${neuer ? `<d:and>${medien}${neuer}</d:and>` : medien}</d:where>
   <d:orderby><d:order><d:prop><d:getlastmodified/></d:prop><d:descending/></d:order></d:orderby>
   <d:limit><d:nresults>${anzahl}</d:nresults><ns:firstresult>${start}</ns:firstresult></d:limit>
@@ -247,7 +260,7 @@ const NC = (() => {
   return {
     setze(k) { konto = k ? { ...k, server: k.server.replace(/\/+$/, '') } : null; },
     get konto() { return konto; },
-    NcFehler, propfind, existiert, ordnerAnlegen, hochladen, freierName, holen, verschieben, loeschen,
+    NcFehler, benutzerId, propfind, existiert, ordnerAnlegen, hochladen, freierName, holen, verschieben, loeschen,
     jsonLesen, jsonAendern, suchen, tagsLesen, tagAnlegen, tagSetzen, dateienMitTag, vorschau, linkErstellen,
     webUrl: (ordner) => `${konto.server}/apps/files/?dir=${encodeURIComponent(ordner)}`,
     papierkorbUrl: () => `${konto.server}/apps/files/trashbin`,

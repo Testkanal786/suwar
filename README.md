@@ -3,14 +3,14 @@
 Fotos und Videos aus der eigenen Nextcloud – als Web-App (PWA) für Android, iPad und Windows.
 Suwar spricht direkt vom Gerät mit der Nextcloud. Es gibt keinen eigenen Server, und im Code stehen keine Zugangsdaten.
 
-## Was Suwar kann (Stand 0.1.3 – Stufe 1, Bausteine 1–6)
+## Was Suwar kann (Stand 0.1.4 – Stufe 1, Bausteine 1–6)
 
 - **Galerie** im Stil C: randloses Raster nach Tagen, Suche, Filter (Art, Bereich, Beleg, Personen, eigene Orte, Jahr, Monat), Schalter für Screenshots
 - **Kategorien** über einen Bauplan (`/Fotos/.fotoapp/kategorien.json`), in den Einstellungen erweiterbar, ohne neuen Code. Werte werden als Nextcloud-Tags gespeichert (`bereich:Privat`)
 - **Personen** von Hand zuordnen. Die Namen stehen in `/Fotos/.fotoapp/personen.json`, nicht in Tags, damit andere Benutzer sie nicht sehen
 - **Aufräum-Modus**: wischen (links löschen, rechts behalten), Rückgängig, schnell zuordnen. Gelöschtes landet im Nextcloud-Papierkorb
 - **Teilen per Link**: Auswahl → Kopie in `/Fotos/Geteilt/<Name>` → öffentlicher Link, optional mit Passwort. Der Standort wird aus den Kopien entfernt (Häkchen „Standort mitgeben“ für Ausnahmen), die Originale bleiben unverändert. Ohne Passwort bekommen Gäste eine gestaltete Seite (`gast.html`)
-- **Hochladen**: Plus-Knopf, unter Android Teilen-Ziel (Galerie → Teilen → Suwar) und Knopf „Nextcloud-App öffnen“
+- **Hochladen**: Plus-Knopf, unter Android Teilen-Ziel (Galerie → Teilen → Suwar)
 - **Video**: abspielen und ein Standbild als Foto speichern
 - **Einrichtung** beim ersten Start: legt `/Fotos/…` an und verschiebt die Screenshots aus `/SofortUpload/Screenshots`
 

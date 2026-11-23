@@ -2,7 +2,7 @@
 // Suwar – Oberfläche. Galerie, Großansicht, Aufräumen, Teilen, Hochladen, Einstellungen.
 /* global NC, Medien, SuwarStandort */
 (() => {
-  const VERSION = '0.1.3';
+  const VERSION = '0.1.4';
   const app = document.getElementById('app');
   const pad = (n) => String(n).padStart(2, '0');
   const istAndroid = /Android/i.test(navigator.userAgent);
@@ -48,7 +48,7 @@
     const el = h('div', { class: 'toast', role: 'status' }, h('span', null, text), aktion && h('button', { onclick: () => { el.remove(); aktion.fn(); } }, aktion.text));
     document.body.append(el);
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.remove(), aktion ? 7000 : 3500);
+    toastTimer = setTimeout(() => { el.classList.add('zu'); setTimeout(() => el.remove(), 200); }, aktion ? 7000 : 3500);
   }
   const fehler = (e) => { console.error(e); toast(e && e.message ? e.message : 'Unbekannter Fehler'); };
   const datumLang = (t) => new Date(t).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
@@ -64,10 +64,13 @@
     history.pushState({ ebene: ebenen.length }, '');
     return () => { if (ebenen.some((e) => e.el === el)) history.back(); };
   }
+  const wenigBewegung = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   function obersteSchliessen() {
     const e = ebenen.pop();
     if (!e) return false;
-    e.el.remove();
+    // erst ausblenden, dann entfernen – nichts verschwindet schlagartig
+    if (wenigBewegung()) e.el.remove();
+    else { e.el.classList.add('zu'); setTimeout(() => e.el.remove(), 200); }
     if (e.beimSchliessen) e.beimSchliessen();
     return true;
   }
@@ -196,7 +199,7 @@
   /* ---------- Ansichten ---------- */
   function wechseln(sicht) {
     if (S.sicht === sicht) return;
-    S.sicht = sicht; S.auswahl = null;
+    S.sicht = sicht; S.auswahl = null; S.einblenden = true;
     history.replaceState(null, '', '#' + sicht);
     window.scrollTo(0, 0);
     if (sicht === 'aufraeumen') aufrStarten();
@@ -212,7 +215,10 @@
     if (!k) return zeigeAnmeldung();
     const ansichten = { galerie: galerieSeite, gemeinsam: gemeinsamSeite, aufraeumen: aufrSeite, geteilt: geteiltSeite, einstellungen: einstellungenSeite, einrichtung: einrichtungSeite };
     const fn = ansichten[S.sicht] || galerieSeite;
-    fuelle(app, ...fn());
+    const teile = fn();
+    // Nur beim Wechsel der Ansicht sanft einblenden, nicht bei jeder Aktualisierung
+    if (S.einblenden) { S.einblenden = false; for (const t of teile) if (t && t.tagName === 'MAIN') t.classList.add('einblenden'); }
+    fuelle(app, ...teile);
   }
 
   /* ----- Galerie ----- */
@@ -224,7 +230,7 @@
     filterKnopf = h('button', { class: 'rund', 'aria-label': 'Filter', onclick: filterBlatt }, ic('filter', 20));
     const kopf = h('header', { class: 'kopf' },
       h('div', { class: 'kopf-zeile' },
-        h('label', { class: 'suche' }, ic('suche', 20, '#6B6B66'), suche, h('button', { class: 'konto-knopf', 'aria-label': 'Einstellungen', onclick: () => wechseln('einstellungen') }, (NC.konto.user[0] || '?').toUpperCase())),
+        h('label', { class: 'suche' }, ic('suche', 20, '#6B6B66'), suche, h('button', { class: 'konto-knopf', 'aria-label': 'Einstellungen', onclick: () => wechseln('einstellungen') }, ((NC.konto.uid || NC.konto.user)[0] || '?').toUpperCase())),
         filterKnopf,
         h('button', { class: 'rund dunkel', 'aria-label': 'Fotos hinzufügen', onclick: plusBlatt }, ic('plus', 20))));
     chipsEl = h('div', { class: 'chips' });
@@ -355,9 +361,8 @@
     const zu = blatt('Hinzufügen', [
       eingabe,
       h('button', { class: 'knopf haupt', onclick: () => eingabe.click() }, ic('hoch', 20), 'Fotos und Videos auswählen'),
-      istAndroid ? h('a', { class: 'knopf', href: 'intent://#Intent;package=com.nextcloud.client;end' }, ic('neu', 20), 'Nextcloud-App öffnen (Upload anstoßen)') : null,
       h('p', { class: 'hinweis' }, ic('info', 16), h('span', null, istAndroid
-        ? 'Schneller geht es aus der Galerie deines Handys: Fotos auswählen → Teilen → Suwar. Der automatische Upload der Nextcloud-App läuft etwa alle 15 Minuten; Öffnen der App stößt ihn sofort an.'
+        ? 'Am schnellsten: in der Galerie deines Handys Fotos auswählen → Teilen → Suwar. Der automatische Upload der Nextcloud-App läuft etwa alle 15 Minuten; öffnest du die Nextcloud-App kurz, lädt sie sofort hoch. (Direkt aus Suwar starten lässt sie sich nicht – Chrome erlaubt Webseiten das aus Sicherheitsgründen nicht.)'
         : 'Neue Fotos landen in /Fotos/Kamera/Jahr/Monat. Der automatische Upload der Nextcloud-App läuft am zuverlässigsten, wenn die App geöffnet ist.')),
     ]);
   }
@@ -369,15 +374,20 @@
     let abbruch = null;
     const titel = h('div', { class: 'ansicht-titel' });
     const buehne = h('div', { class: 'buehne' });
-    const info = h('div', { class: 'info versteckt' });
+    const info = h('div', { class: 'info', 'aria-hidden': 'true' });
     const fuss = h('div', { class: 'ansicht-fuss' });
+    const infoKnopf = h('button', { class: 'rund', 'aria-label': 'Informationen', 'aria-pressed': 'false', onclick: () => {
+      const offen = info.classList.toggle('offen'); // legt sich über das Bild, verschiebt nichts
+      info.setAttribute('aria-hidden', String(!offen)); infoKnopf.setAttribute('aria-pressed', String(offen)); infoKnopf.classList.toggle('an', offen);
+    } }, ic('info', 20));
     const el = h('div', { class: 'ansicht', role: 'dialog', 'aria-label': 'Großansicht', tabindex: '-1' },
-      h('div', { class: 'ansicht-kopf' }, h('button', { class: 'rund', 'aria-label': 'Schließen', onclick: () => zu() }, ic('zurueck', 20)), titel,
-        h('button', { class: 'rund', 'aria-label': 'Informationen', onclick: () => info.classList.toggle('versteckt') }, ic('info', 20))),
-      buehne, info, fuss);
+      h('div', { class: 'ansicht-kopf' }, h('button', { class: 'rund', 'aria-label': 'Schließen', onclick: () => zu() }, ic('zurueck', 20)), titel, infoKnopf),
+      h('div', { class: 'ansicht-mitte' }, buehne, info), fuss);
     function aufraeumen() { if (abbruch) abbruch.abort(); if (videoUrl) { URL.revokeObjectURL(videoUrl); videoUrl = null; } }
-    async function zeigen() {
+    async function zeigen(richtung = 0) {
       aufraeumen();
+      const rein = richtung > 0 ? ' rein-rechts' : richtung < 0 ? ' rein-links' : '';
+      Object.assign(zoom, { s: 1, tx: 0, ty: 0 });
       const m = liste[i];
       if (!m) { zu(); return; }
       fuelle(titel, h('b', null, datumKurz(m.datum)), h('span', null, `${i + 1} von ${liste.length} · ${m.art}`));
@@ -394,13 +404,13 @@
         const klein = await vorschauUrl(m, 512).catch(() => null);
         if (liste[i] !== m) return;
         const lade = h('div', { class: 'lade' }, 'Video wird geladen …');
-        fuelle(buehne, klein ? h('img', { class: 'voll', src: klein, alt: '' }) : '', lade);
+        fuelle(buehne, klein ? h('img', { class: 'voll' + rein, src: klein, alt: '' }) : '', lade);
         abbruch = new AbortController();
         try {
           const blob = await NC.holen(m.pfad, { signal: abbruch.signal, fortschritt: (p) => { lade.textContent = `Video wird geladen … ${Math.round(p * 100)} %`; } });
           if (liste[i] !== m) return;
           videoUrl = URL.createObjectURL(blob);
-          const v = h('video', { src: videoUrl, controls: true, playsinline: true, autoplay: true });
+          const v = h('video', { class: 'weich', src: videoUrl, controls: true, playsinline: true, autoplay: true });
           fuelle(buehne, v);
           v.addEventListener('loadeddata', () => { const k = fuss.querySelector('#standbild'); if (k) k.disabled = false; });
         } catch (e) { if (e.name !== 'AbortError') lade.textContent = 'Video nicht geladen: ' + e.message; }
@@ -408,11 +418,10 @@
       }
       // Erst ein kleines Bild mit echtem Seitenverhältnis in voller Anzeigegröße (unscharf), dann dasselbe scharf:
       // Größe und Form bleiben gleich, das Bild wird nur „nachgeschärft“.
-      const img = h('img', { class: 'voll', alt: m.name });
-      fuelle(buehne, img);
       const mittel = await vorschauUrl(m, 512).catch(() => null);
       if (liste[i] !== m) return;
-      if (mittel) img.src = mittel;
+      const img = h('img', { class: 'voll' + rein, alt: m.name, src: mittel || null });
+      fuelle(buehne, img);
       for (const n of [liste[i + 1], liste[i - 1]]) if (n && !n.video) vorschauUrl(n, 512).catch(() => {});
       try {
         let gross = null;
@@ -428,11 +437,124 @@
         setTimeout(() => URL.revokeObjectURL(u), 60000);
       } catch (e) { if (!mittel) fuelle(buehne, h('div', { class: 'lade' }, 'Bild nicht geladen: ' + e.message)); }
     }
-    function blaettern(r) { const n = i + r; if (n < 0 || n >= liste.length) return; i = n; zeigen(); }
-    let x0 = null;
-    buehne.addEventListener('pointerdown', (e) => { if (e.target.tagName !== 'VIDEO') x0 = e.clientX; });
-    buehne.addEventListener('pointerup', (e) => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 60) blaettern(dx < 0 ? 1 : -1); });
-    el.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') blaettern(1); if (e.key === 'ArrowLeft') blaettern(-1); if (e.key === 'Escape') zu(); });
+    function blaettern(r) {
+      const n = i + r;
+      const b = bild();
+      if (n < 0 || n >= liste.length) { if (b) { b.style.transition = 'transform .25s cubic-bezier(.2,.8,.2,1)'; b.style.transform = ''; } return; }
+      i = n;
+      zeigen(r);
+    }
+    /* Zoomen: zwei Finger, Doppeltippen, Mausrad. Wischen zum Blättern nur, wenn nicht vergrößert. */
+    const zoom = { s: 1, tx: 0, ty: 0 };
+    const finger = new Map();
+    let geste = null;
+    let letzterTipp = null;
+    const bild = () => buehne.querySelector('img.voll');
+    function zoomSetzen(s, tx, ty, weich) {
+      const b = bild();
+      if (!b) return;
+      s = Math.min(6, Math.max(1, s));
+      const r = buehne.getBoundingClientRect();
+      const mx = (r.width * (s - 1)) / 2;
+      const my = (r.height * (s - 1)) / 2;
+      Object.assign(zoom, { s, tx: s === 1 ? 0 : Math.min(mx, Math.max(-mx, tx)), ty: s === 1 ? 0 : Math.min(my, Math.max(-my, ty)) });
+      b.style.transition = weich ? 'transform .2s ease-out' : 'none';
+      b.style.transform = zoom.s === 1 ? '' : `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.s})`;
+      if (zoom.s > 1.8) originalNachladen();
+    }
+    // Punkt (Bildschirm) → relativ zur Mitte der Bühne
+    const relativ = (x, y) => { const r = buehne.getBoundingClientRect(); return { x: x - r.left - r.width / 2, y: y - r.top - r.height / 2 }; };
+    // Um einen Punkt herum zoomen: dieser Punkt bleibt unter dem Finger
+    function zoomUm(p, s2, s1 = zoom.s, t1 = { x: zoom.tx, y: zoom.ty }, weich = false) {
+      zoomSetzen(s2, p.x - (s2 * (p.x - t1.x)) / s1, p.y - (s2 * (p.y - t1.y)) / s1, weich);
+    }
+    let originalFuer = null;
+    async function originalNachladen() {
+      const m = liste[i];
+      if (!m || m.video || originalFuer === m.id || m.groesse > 40e6 || vorschauGeht === false) return;
+      originalFuer = m.id;
+      try {
+        const blob = await NC.holen(m.pfad);
+        const u = URL.createObjectURL(blob);
+        const neu = new Image(); neu.src = u; await neu.decode().catch(() => {});
+        const b = bild();
+        if (liste[i] === m && b) { b.src = u; setTimeout(() => URL.revokeObjectURL(u), 60000); } else URL.revokeObjectURL(u);
+      } catch { /* bleibt bei der großen Vorschau */ }
+    }
+    buehne.addEventListener('pointerdown', (e) => {
+      if (e.target.tagName === 'VIDEO') return;
+      buehne.setPointerCapture(e.pointerId);
+      finger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const pkt = [...finger.values()];
+      if (pkt.length === 2) {
+        const mitte = relativ((pkt[0].x + pkt[1].x) / 2, (pkt[0].y + pkt[1].y) / 2);
+        geste = { art: 'pinch', d0: Math.hypot(pkt[0].x - pkt[1].x, pkt[0].y - pkt[1].y), s0: zoom.s, t0: { x: zoom.tx, y: zoom.ty }, m0: mitte };
+      } else if (pkt.length === 1) geste = { art: zoom.s > 1 ? 'schieben' : 'wischen', x0: e.clientX, y0: e.clientY, tx0: zoom.tx, ty0: zoom.ty, bewegt: false };
+    });
+    buehne.addEventListener('pointermove', (e) => {
+      if (!finger.has(e.pointerId) || !geste) return;
+      finger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const pkt = [...finger.values()];
+      if (geste.art === 'pinch' && pkt.length === 2) {
+        const d = Math.hypot(pkt[0].x - pkt[1].x, pkt[0].y - pkt[1].y);
+        const mitte = relativ((pkt[0].x + pkt[1].x) / 2, (pkt[0].y + pkt[1].y) / 2);
+        const s2 = Math.min(6, Math.max(1, (geste.s0 * d) / geste.d0));
+        // Zoom um den Startmittelpunkt, dazu Verschiebung um die Bewegung der Fingermitte
+        zoomSetzen(s2, mitte.x - (s2 * (geste.m0.x - geste.t0.x)) / geste.s0, mitte.y - (s2 * (geste.m0.y - geste.t0.y)) / geste.s0);
+      } else if (geste.art === 'schieben') {
+        zoomSetzen(zoom.s, geste.tx0 + e.clientX - geste.x0, geste.ty0 + e.clientY - geste.y0);
+      } else if (geste.art === 'wischen') {
+        const b = bild();
+        const dx = e.clientX - geste.x0;
+        if (b && Math.abs(dx) > Math.abs(e.clientY - geste.y0)) { b.style.transition = 'none'; b.style.transform = `translateX(${dx}px)`; b.style.opacity = String(1 - Math.min(0.5, Math.abs(dx) / 800)); }
+      }
+      if (Math.hypot(e.clientX - (geste.x0 || 0), e.clientY - (geste.y0 || 0)) > 10) geste.bewegt = true;
+    });
+    function loslassen(e) {
+      if (!finger.has(e.pointerId)) return;
+      finger.delete(e.pointerId);
+      if (!geste) return;
+      if (geste.art === 'wischen' && finger.size === 0) {
+        const dx = e.clientX - geste.x0;
+        const dy = e.clientY - geste.y0;
+        const b = bild();
+        const ziel = i + (dx < 0 ? 1 : -1);
+        if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) && ziel >= 0 && ziel < liste.length) {
+          letzterTipp = null;
+          if (b) { b.style.transition = 'transform .18s ease-in, opacity .18s ease-in'; b.style.transform = `translateX(${dx < 0 ? -45 : 45}%)`; b.style.opacity = '0'; }
+          blaettern(dx < 0 ? 1 : -1);
+        } else {
+          if (b) { b.style.transition = 'transform .28s cubic-bezier(.2,.8,.2,1), opacity .28s'; b.style.transform = ''; b.style.opacity = ''; }
+          if (!geste.bewegt) doppeltipp(e);
+        }
+      } else if (geste.art === 'schieben' && finger.size === 0 && !geste.bewegt) doppeltipp(e);
+      if (geste.art === 'pinch' && zoom.s < 1.05) zoomSetzen(1, 0, 0, true);
+      if (finger.size === 0) geste = null;
+      else if (finger.size === 1) { const [p0] = [...finger.values()]; geste = { art: zoom.s > 1 ? 'schieben' : 'wischen', x0: p0.x, y0: p0.y, tx0: zoom.tx, ty0: zoom.ty, bewegt: true }; }
+    }
+    function doppeltipp(e) {
+      const jetzt = Date.now();
+      if (letzterTipp && jetzt - letzterTipp.t < 320 && Math.hypot(e.clientX - letzterTipp.x, e.clientY - letzterTipp.y) < 40) {
+        letzterTipp = null;
+        if (zoom.s > 1) zoomSetzen(1, 0, 0, true); else zoomUm(relativ(e.clientX, e.clientY), 2.5, 1, { x: 0, y: 0 }, true);
+      } else letzterTipp = { t: jetzt, x: e.clientX, y: e.clientY };
+    }
+    buehne.addEventListener('pointerup', loslassen);
+    buehne.addEventListener('pointercancel', loslassen);
+    buehne.addEventListener('wheel', (e) => {
+      if (!bild()) return;
+      e.preventDefault();
+      zoomUm(relativ(e.clientX, e.clientY), zoom.s * Math.exp(-e.deltaY * 0.0018));
+    }, { passive: false });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') blaettern(1);
+      if (e.key === 'ArrowLeft') blaettern(-1);
+      if (e.key === 'Escape') zu();
+      if (e.key === 'i') infoKnopf.click();
+      if (e.key === '+' || e.key === '=') zoomUm({ x: 0, y: 0 }, zoom.s * 1.5, zoom.s, { x: zoom.tx, y: zoom.ty }, true);
+      if (e.key === '-') zoomUm({ x: 0, y: 0 }, zoom.s / 1.5, zoom.s, { x: zoom.tx, y: zoom.ty }, true);
+      if (e.key === '0') zoomSetzen(1, 0, 0, true);
+    });
     async function standbild(m) {
       const v = buehne.querySelector('video');
       if (!v || !v.videoWidth) return;
@@ -669,7 +791,7 @@
     for (const n of a.warte.slice(a.index + 1, a.index + 3)) { vorschauUrl(n, 512).catch(() => {}); vorschauUrl(n, 1024).catch(() => {}); }
     const weg = h('div', { class: 'stempel weg' }, 'LÖSCHEN');
     const bleibt = h('div', { class: 'stempel bleibt' }, 'BEHALTEN');
-    const karte = h('div', { class: 'foto-karte', role: 'group', 'aria-label': 'Aktuelles Foto' },
+    const karte = h('div', { class: 'foto-karte' + (S.aufr.frisch ? ' neu' : ''), role: 'group', 'aria-label': 'Aktuelles Foto' },
       h('div', { class: 'bild' }, img), weg, bleibt,
       h('div', { class: 'unter' }, h('div', null, h('div', null, datumKurz(m.datum)), h('div', { class: 'klein' }, `${m.art} · ${groesseText(m.groesse)}`)),
         m.video ? h('span', { class: 'marke-rot' }, 'Video') : null));
@@ -705,10 +827,18 @@
         h('div', { class: 'stapel' }, h('div', { class: 'hinten' }), karte, h('div', { class: 'wisch-hinweis' }, h('span', null, '← wischen: löschen'), h('span', null, 'behalten: wischen →'))),
         h('div', null, h('div', { class: 'klein' }, 'Schnell zuordnen'), schnell),
         h('div', { class: 'entscheiden' },
-          h('button', { class: 'rund gross', 'aria-label': 'Löschen', onclick: () => entscheiden('weg') }, ic('x', 28, '#B42318')),
+          h('button', { class: 'rund gross', 'aria-label': 'Löschen', onclick: () => hinaus(karte, -1) }, ic('x', 28, '#B42318')),
           h('button', { class: 'rund', 'aria-label': 'Rückgängig', disabled: !a.verlauf.length || null, onclick: rueckgaengig }, ic('rueckgaengig', 22, '#6B6B66')),
-          h('button', { class: 'rund gross', 'aria-label': 'Behalten', onclick: () => entscheiden('bleibt') }, ic('haken', 28, '#1F7A4D')))),
+          h('button', { class: 'rund gross', 'aria-label': 'Behalten', onclick: () => hinaus(karte, 1) }, ic('haken', 28, '#1F7A4D')))),
       leiste()];
+  }
+  // Karte in Wischrichtung hinausgleiten lassen, dann entscheiden (bei Knopfdruck wie beim Wischen)
+  function hinaus(karte, r) {
+    if (wenigBewegung() || !karte.isConnected) { entscheiden(r > 0 ? 'bleibt' : 'weg'); return; }
+    karte.style.transition = 'transform .22s ease-in, opacity .22s ease-in';
+    karte.style.transform = `translateX(${r * 110}%) rotate(${r * 8}deg)`;
+    karte.style.opacity = '0';
+    setTimeout(() => entscheiden(r > 0 ? 'bleibt' : 'weg'), 200);
   }
   function entscheiden(aktion) {
     const a = S.aufr;
@@ -722,7 +852,9 @@
     } else Medien.geprueftMarkieren([m.id]);
     a.verlauf.push({ m, aktion, index: a.index });
     a.index++;
+    S.aufr.frisch = true;
     zeichne();
+    S.aufr.frisch = false;
     if (aktion === 'weg') toast('Gelöscht', { text: 'Rückgängig', fn: rueckgaengig });
   }
   function rueckgaengig() {
@@ -738,8 +870,9 @@
   }
   document.addEventListener('keydown', (e) => {
     if (S.sicht !== 'aufraeumen' || ebenen.length || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
-    if (e.key === 'ArrowLeft') entscheiden('weg');
-    if (e.key === 'ArrowRight') entscheiden('bleibt');
+    const karte = document.querySelector('.foto-karte');
+    if (e.key === 'ArrowLeft') { if (karte) hinaus(karte, -1); else entscheiden('weg'); }
+    if (e.key === 'ArrowRight') { if (karte) hinaus(karte, 1); else entscheiden('bleibt'); }
     if (e.key === 'z' && (e.ctrlKey || e.metaKey)) rueckgaengig();
   });
   // Beim Verlassen der App ausstehende Löschungen sofort ausführen
@@ -809,7 +942,7 @@
             h('button', { class: 'knopf', onclick: async () => { await caches.delete('suwar-vorschau'); urlCache.clear(); toast('Vorschaubilder gelöscht'); } }, 'Vorschau leeren')),
           h('button', { class: 'knopf', onclick: () => wechseln('einrichtung') }, 'Einrichtung erneut ausführen')),
         h('section', { class: 'karte' }, h('h2', null, 'Konto'),
-          h('p', null, `${NC.konto.user} auf ${NC.konto.server}`),
+          h('p', null, `${NC.konto.uid || NC.konto.user} auf ${NC.konto.server}`),
           h('button', { class: 'knopf gefahr', onclick: async () => {
             if (!confirm('Abmelden? Zugangsdaten und Zwischenspeicher auf diesem Gerät werden gelöscht.')) return;
             kontoSpeichern(null); NC.setze(null); Medien.zuruecksetzen();
@@ -884,6 +1017,8 @@
       const k = { server: s, user: user.value.trim(), pass: pass.value.trim() };
       NC.setze(k);
       try {
+        k.uid = await NC.benutzerId();
+        NC.setze(k);
         const r = await NC.propfind('/', 0);
         if (!r) throw new NC.NcFehler('Benutzer nicht gefunden', 404);
         kontoSpeichern(k);
@@ -921,6 +1056,10 @@
   Medien.beobachten(() => { cancelAnimationFrame(malen); malen = requestAnimationFrame(() => { if (S.sicht === 'galerie' && !ebenen.length) rasterNeu(); }); });
 
   async function starteMitKonto() {
+    const k = kontoLesen();
+    if (k && !k.uid) {
+      try { k.uid = await NC.benutzerId(); kontoSpeichern(k); NC.setze(k); } catch (e) { fehler(e); }
+    }
     await Medien.cacheLaden();
     let eingerichtet = true;
     try { eingerichtet = await NC.existiert(Medien.BAUPLAN); } catch (e) { fehler(e); }

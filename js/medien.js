@@ -49,7 +49,7 @@ const Medien = (() => {
   }
   async function kvLesen(k) { const d = await db(); return new Promise((ok) => { const r = d.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => ok(r.result); r.onerror = () => ok(undefined); }); }
   async function kvSchreiben(k, v) { const d = await db(); return new Promise((ok) => { const t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = ok; t.onerror = ok; }); }
-  const schluessel = () => `medien:${NC.konto.user}@${NC.konto.server}`;
+  const schluessel = () => `medien2:${NC.konto.uid || NC.konto.user}@${NC.konto.server}`;
   let speicherTimer = 0;
   function cacheSpeichern() {
     clearTimeout(speicherTimer);

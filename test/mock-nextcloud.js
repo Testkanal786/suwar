@@ -8,7 +8,8 @@ const crypto = require('crypto');
 
 const PORT = +(process.argv[2] || 8090);
 const SEED = process.argv[3] || path.join(__dirname, 'daten', 'seed');
-const USER = 'elias';
+const USER = 'elias'; // Anmeldename
+const UID = 'Elias H'; // interne Benutzer-ID – absichtlich anders und mit Leerzeichen wie bei Elias' echter Nextcloud
 const PASS = 'test-app-passwort';
 let naechsteId = 100;
 const dateien = new Map(); // pfad → { id, ordner, daten, mime, mtime, etag, gps }
@@ -46,7 +47,7 @@ function seedLesen(dir, basis = '') {
 seedLesen(SEED);
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const href = (p) => '/remote.php/dav/files/' + USER + p.split('/').map(encodeURIComponent).join('/') + (dateien.get(p) && dateien.get(p).ordner && p !== '/' ? '/' : '');
+const href = (p) => '/remote.php/dav/files/' + encodeURIComponent(UID) + p.split('/').map(encodeURIComponent).join('/') + (dateien.get(p) && dateien.get(p).ordner && p !== '/' ? '/' : '');
 function eintragXml(p, e) {
   return `<d:response><d:href>${esc(href(p))}</d:href><d:propstat><d:prop>
 <d:getlastmodified>${new Date(e.mtime).toUTCString()}</d:getlastmodified><d:getetag>${esc(e.etag)}</d:getetag>
@@ -69,7 +70,7 @@ function cors(req, res) {
 }
 const ende = (res, status, text = '', typ = 'text/plain') => { res.writeHead(status, { 'Content-Type': typ }); res.end(text); };
 const angemeldet = (req) => req.headers.authorization === 'Basic ' + Buffer.from(USER + ':' + PASS).toString('base64');
-const davPfad = (url) => { const m = url.match(/^\/remote\.php\/dav\/files\/[^/]+(\/.*)?$/); if (!m) return null; const p = decodeURIComponent((m[1] || '/').replace(/\/+$/, '')) || '/'; return p; };
+const davPfad = (url) => { const m = url.match(/^\/remote\.php\/dav\/files\/([^/]+)(\/.*)?$/); if (!m || decodeURIComponent(m[1]) !== UID) return null; m[1] = m[2]; const p = decodeURIComponent((m[1] || '/').replace(/\/+$/, '')) || '/'; return p; };
 
 const server = http.createServer((req, res) => {
   const teile = [];
@@ -129,10 +130,13 @@ const server = http.createServer((req, res) => {
       if (req.method === 'PUT') { if (s.has(m[2])) return ende(res, 409); s.add(m[2]); relationen.set(m[1], s); return ende(res, 201); }
       if (req.method === 'DELETE') { if (!s.delete(m[2])) return ende(res, 404); return ende(res, 204); }
     }
+    if (req.method === 'PROPFIND' && /^\/remote\.php\/dav\/?$/.test(u.pathname)) return ende(res, 207, multi(`<d:response><d:href>/remote.php/dav/</d:href><d:propstat><d:prop><d:current-user-principal><d:href>/remote.php/dav/principals/users/${encodeURIComponent(UID)}/</d:href></d:current-user-principal></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`), 'application/xml');
     // Suche
     if (req.method === 'SEARCH' && u.pathname.replace(/\/$/, '') === '/remote.php/dav') {
       const b = body.toString();
-      const scope = decodeURIComponent((b.match(/<d:href>\/files\/[^/<]+(\/[^<]*)?<\/d:href>/) || [])[1] || '/');
+      const sm = b.match(/<d:href>\/files\/([^/<]+)(\/[^<]*)?<\/d:href>/) || [];
+      if (sm[1] !== UID) return ende(res, 404);
+      const scope = decodeURIComponent(sm[2] || '/');
       const seit = (b.match(/<d:gt>[\s\S]*?<d:literal>(\d+)<\/d:literal>/) || [])[1];
       const anzahl = +((b.match(/<d:nresults>(\d+)/) || [])[1] || 1000);
       const start = +((b.match(/firstresult>(\d+)/) || [])[1] || 0);
