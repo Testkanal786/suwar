@@ -1,6 +1,6 @@
 // Suwar: hält nur die Programmdateien vor, damit die App auch ohne Netz startet.
 // Fotos und Zugangsdaten laufen nie hierüber; sie gehen direkt vom Gerät an deine Nextcloud.
-const VERSION = 'suwar-1';
+const VERSION = 'suwar-2';
 const DATEIEN = ['./', 'index.html', 'stil.css', 'js/standort.js', 'js/nc.js', 'js/medien.js', 'js/app.js', 'manifest.webmanifest', 'icons/suwar-64.png', 'icons/suwar-192.png', 'gast.html', 'gast.css', 'js/gast.js'];
 
 self.addEventListener('install', (e) => {

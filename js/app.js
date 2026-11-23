@@ -2,7 +2,7 @@
 // Suwar – Oberfläche. Galerie, Großansicht, Aufräumen, Teilen, Hochladen, Einstellungen.
 /* global NC, Medien, SuwarStandort */
 (() => {
-  const VERSION = '0.1.0';
+  const VERSION = '0.1.1';
   const app = document.getElementById('app');
   const pad = (n) => String(n).padStart(2, '0');
   const istAndroid = /Android/i.test(navigator.userAgent);
@@ -253,6 +253,8 @@
     fuelle(chipsEl, ...chips);
   }
   let aktuelleListe = [];
+  // Wie viele Treffer gäbe es mit eingeblendeten Screenshots? (für die Leer-Meldung)
+  const ausgeblendeteScreenshots = () => (S.filter.screenshots ? 0 : Medien.filtern({ ...S.filter, screenshots: true }).length);
   function rasterNeu() {
     if (!rasterEl) return;
     const z = Medien.zustand;
@@ -263,7 +265,10 @@
     if (!aktuelleListe.length) {
       teile.push(z.laedt && !z.liste.length ? h('div', { class: 'leer' }, 'Fotos werden geladen …')
         : !z.liste.length ? h('div', { class: 'leer' }, h('h2', null, 'Noch keine Fotos'), 'Suwar zeigt Fotos und Videos aus ', h('code', null, z.bauplan.quellen.join(', ')), '. Lade mit ', h('b', null, '+'), ' welche hoch oder aktiviere den automatischen Upload in der Nextcloud-App.')
-          : h('div', { class: 'leer' }, h('h2', null, 'Nichts gefunden'), 'Kein Foto passt zu Suche und Filtern.'));
+          : ausgeblendeteScreenshots() ? h('div', { class: 'leer' }, h('h2', null, `${ausgeblendeteScreenshots()} Screenshots ausgeblendet`),
+            z.liste.every((m) => m.art === 'Screenshot') ? 'Bisher liegen nur Screenshots in deinen Quellordnern. Kamera-Fotos erscheinen, sobald der automatische Upload der Nextcloud-App läuft (Ziel /Fotos/Kamera).' : 'Zu Suche und Filtern passen nur Screenshots.',
+            h('div', { class: 'zeile' }, h('button', { class: 'knopf haupt', onclick: () => { S.filter.screenshots = true; rasterNeu(); } }, 'Screenshots anzeigen')))
+            : h('div', { class: 'leer' }, h('h2', null, 'Nichts gefunden'), 'Kein Foto passt zu Suche und Filtern.'));
       fuelle(rasterEl, ...teile);
       return;
     }
