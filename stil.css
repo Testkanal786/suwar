@@ -26,7 +26,11 @@ a { color: var(--akzent); }
 .rund { flex: none; position: relative; width: 44px; height: 44px; border-radius: 22px; border: 1px solid var(--rand); background: var(--karte); display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 .rund.dunkel { background: var(--text); border-color: var(--text); color: #fff; }
 .rund.klein { width: 34px; height: 34px; border: none; background: transparent; }
-.konto-knopf { width: 32px; height: 32px; border-radius: 16px; border: none; background: var(--akzent); color: #fff; font-size: 14px; font-weight: 600; flex: none; }
+.konto-knopf { width: 38px; height: 38px; margin-right: -4px; padding: 2px; border-radius: 12px; border: none; background: none; flex: none; display: grid; place-items: center; }
+.konto-knopf svg, .himmel-logo svg { display: block; }
+.himmel-kopf { display: flex; align-items: center; gap: 14px; }
+.himmel-kopf p { margin: 2px 0 0; }
+.himmel-logo { border: none; background: none; padding: 0; border-radius: 16px; flex: none; }
 .zaehler { position: absolute; right: -3px; top: -3px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--akzent); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; }
 .chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; }
 .chips::-webkit-scrollbar { display: none; }
@@ -146,7 +150,7 @@ code { background: var(--chip); padding: 1px 5px; border-radius: 5px; font-size:
 
 /* Anmeldung */
 .anmeldung { max-width: 440px; margin: 0 auto; padding: calc(48px + var(--sicher-oben)) 20px 32px; display: flex; flex-direction: column; gap: 18px; }
-.anmeldung .logo { width: 72px; height: 72px; border-radius: 18px; }
+.anmeldung .logo { width: 72px; height: 72px; display: block; filter: drop-shadow(0 4px 12px rgba(28, 28, 26, .10)); }
 .anmeldung h1 { margin: 0; font-size: 28px; }
 .fehler { color: var(--rot); font-size: 14px; }
 

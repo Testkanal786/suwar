@@ -1,8 +1,8 @@
 'use strict';
 // Suwar – Oberfläche. Galerie, Großansicht, Aufräumen, Teilen, Hochladen, Einstellungen.
-/* global NC, Medien, SuwarStandort */
+/* global NC, Medien, SuwarStandort, SuwarLogo */
 (() => {
-  const VERSION = '0.1.5';
+  const VERSION = '0.1.6';
   const app = document.getElementById('app');
   const pad = (n) => String(n).padStart(2, '0');
   const istAndroid = /Android/i.test(navigator.userAgent);
@@ -230,7 +230,7 @@
     filterKnopf = h('button', { class: 'rund', 'aria-label': 'Filter', onclick: filterBlatt }, ic('filter', 20));
     const kopf = h('header', { class: 'kopf' },
       h('div', { class: 'kopf-zeile' },
-        h('label', { class: 'suche' }, ic('suche', 20, '#6B6B66'), suche, h('button', { class: 'konto-knopf', 'aria-label': 'Einstellungen', onclick: () => wechseln('einstellungen') }, ((NC.konto.uid || NC.konto.user)[0] || '?').toUpperCase())),
+        h('label', { class: 'suche' }, ic('suche', 20, '#6B6B66'), suche, h('button', { class: 'konto-knopf', 'aria-label': 'Einstellungen', title: 'Einstellungen', onclick: () => wechseln('einstellungen') }, SuwarLogo.erstellen({ groesse: 34, schmuck: true }).el)),
         filterKnopf,
         h('button', { class: 'rund dunkel', 'aria-label': 'Fotos hinzufügen', onclick: plusBlatt }, ic('plus', 20))));
     chipsEl = h('div', { class: 'chips' });
@@ -892,6 +892,7 @@
     return [
       h('header', { class: 'kopf' }, h('div', { class: 'kopf-zeile' }, h('button', { class: 'rund klein', 'aria-label': 'Zurück', onclick: () => wechseln('galerie') }, ic('zurueck', 22)), h('h1', null, 'Einstellungen'))),
       h('main', { class: 'inhalt' }, h('div', { class: 'seite' },
+        himmelKarte(),
         h('section', { class: 'karte' }, h('h2', null, 'Kategorien'),
           h('p', null, 'Der Bauplan liegt in /Fotos/.fotoapp/kategorien.json. Neue Kategorien erscheinen sofort in Filter und Aufräum-Modus.'),
           h('div', { class: 'liste' }, b.kategorien.map((k) => h('div', null,
@@ -953,6 +954,28 @@
       leiste()];
   }
 
+  // Lebendiges Logo: zeigt den Himmel zur Tageszeit; Ort nur auf diesem Gerät gespeichert, auf etwa 10 km gerundet
+  function himmelKarte() {
+    const logo = SuwarLogo.erstellen({ groesse: 64, kachel: true });
+    const z = logo.zeichne();
+    const o = SuwarLogo.ort();
+    const uhr = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+    const standort = () => {
+      if (!navigator.geolocation) { toast('Standort ist auf diesem Gerät nicht verfügbar'); return; }
+      navigator.geolocation.getCurrentPosition((p) => {
+        SuwarLogo.ortSetzen({ lat: Math.round(p.coords.latitude * 10) / 10, lon: Math.round(p.coords.longitude * 10) / 10, name: 'deinen Standort (auf etwa 10 km gerundet)' });
+        toast('Der Himmel richtet sich jetzt nach deinem Standort'); zeichne();
+      }, () => toast('Standort nicht freigegeben'), { timeout: 15000, maximumAge: 3600000 });
+    };
+    return h('section', { class: 'karte' },
+      h('div', { class: 'himmel-kopf' }, h('button', { class: 'himmel-logo', 'aria-label': 'Einen Tag ablaufen lassen', onclick: () => logo.abspielen() }, logo.el),
+        h('div', null, h('h2', null, 'Himmel im Logo'), h('p', null, `Jetzt: ${z.phase}`))),
+      h('p', null, `Der Blick im Stern zeigt den Himmel wie gerade draußen – berechnet aus dem Sonnenstand für ${o.name}. Heute: Sonnenaufgang ${uhr(z.zeiten.aufgang)}, Sonnenuntergang ${uhr(z.zeiten.untergang)}. Tippe auf das Logo, dann läuft ein ganzer Tag ab.`),
+      h('div', { class: 'zeile' },
+        h('button', { class: 'knopf', onclick: standort }, ic('standort', 18), o.voreinstellung ? 'Meinen Standort verwenden' : 'Standort neu bestimmen'),
+        o.voreinstellung ? null : h('button', { class: 'knopf', onclick: () => { SuwarLogo.ortSetzen(null); zeichne(); } }, 'Voreinstellung')));
+  }
+
   /* ----- Einrichtung ----- */
   function einrichtungSeite() {
     const protokoll = h('div', { class: 'protokoll versteckt' });
@@ -1007,6 +1030,9 @@
     const pass = h('input', { type: 'password', autocomplete: 'current-password' });
     const meldung = h('div', { class: 'fehler', role: 'alert' });
     const knopf = h('button', { class: 'knopf haupt', type: 'submit' }, 'Anmelden');
+    const anmeldeLogo = SuwarLogo.erstellen({ groesse: 72, kachel: true });
+    anmeldeLogo.el.classList.add('logo');
+    setTimeout(() => anmeldeLogo.abspielen(), 500);
     const form = h('form', { class: 'anmeldung', onsubmit: async (e) => {
       e.preventDefault();
       meldung.textContent = '';
@@ -1030,7 +1056,7 @@
         knopf.disabled = false;
       }
     } },
-    h('img', { class: 'logo', src: 'icons/suwar-192.png', alt: '' }),
+    anmeldeLogo.el,
     h('h1', null, 'Suwar'),
     h('p', { class: 'hinweis' }, h('span', null, 'Deine Fotos und Videos aus der eigenen Nextcloud. Die Verbindung geht direkt von diesem Gerät an deine Nextcloud.')),
     h('label', { class: 'feld' }, 'Adresse der Nextcloud', server),
