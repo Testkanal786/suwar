@@ -2,7 +2,7 @@
 // Suwar – Verbindung zur Nextcloud.
 // Alle Zugriffe gehen direkt vom Gerät an die Nextcloud (WebDAV), mit dem App-Passwort des Kontos.
 // Die erlaubte Herkunft (CORS) stellt die Nextcloud-App „WebAppPassword“ bereit:
-//   Feld „WebDAV/CalDAV“ für Dateien und Tags, „Files sharing API“ für Links, „Preview“ für Vorschaubilder.
+//   Feld „WebDAV/CalDAV“ für Dateien, Tags und die Gebetszeiten-Liste, „Files sharing API“ für Links, „Preview“ für Vorschaubilder.
 /* exported NC */
 const NC = (() => {
   const DAV = 'DAV:';
@@ -233,6 +233,39 @@ const NC = (() => {
     return antworten(await r.text()).map((a) => txt(a.props, 'fileid')).filter(Boolean);
   }
 
+  /* ---------- Gebetszeiten aus der Indibat-Aufgabenliste „Gebete“ (CalDAV, gleiche Regeln wie Indibat) ---------- */
+  // Indibat legt dort je Tag fünf Aufgaben an: UID indibat-gebet-JJJJMMTT-fajr … -isha, Fälligkeit = Gebetszeit.
+  // Ergebnis: { 'JJJJ-MM-TT': { fajr: 'HH:MM', dhuhr, asr, maghrib, isha } } oder null, wenn es die Liste nicht gibt.
+  const CALDAV = 'urn:ietf:params:xml:ns:caldav';
+  async function gebeteLaden(listenName = 'Gebete') {
+    const heim = `${davBasis()}/calendars/${encodeURIComponent(uid())}/`;
+    const r = await anfrage('PROPFIND', heim, { headers: { Depth: '1', 'Content-Type': 'application/xml; charset=utf-8' },
+      body: `<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="${CALDAV}"><d:prop><d:displayname/><d:resourcetype/><c:supported-calendar-component-set/></d:prop></d:propfind>` });
+    if (r.status >= 400) return null;
+    const liste = antworten(await r.text()).find((a) => txt(a.props, 'displayname') === listenName
+      && a.props.resourcetype && a.props.resourcetype.getElementsByTagNameNS(CALDAV, 'calendar').length);
+    if (!liste) return null;
+    const r2 = await anfrage('REPORT', konto.server + kodieren(liste.href), { headers: { Depth: '1', 'Content-Type': 'application/xml; charset=utf-8' },
+      body: `<?xml version="1.0"?><c:calendar-query xmlns:d="DAV:" xmlns:c="${CALDAV}"><d:prop><c:calendar-data/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VTODO"/></c:comp-filter></c:filter></c:calendar-query>` });
+    if (r2.status >= 400) throw new NcFehler(`Liste „${listenName}“ nicht lesbar (Fehler ${r2.status})`, r2.status);
+    const tage = {};
+    const pad2 = (n) => String(n).padStart(2, '0');
+    for (const a of antworten(await r2.text())) {
+      const zeilen = txt(a.props, 'calendar-data').replace(/\r?\n[ \t]/g, '').split(/\r?\n/);
+      const uidZeile = zeilen.find((z) => /^UID[:;]/i.test(z)) || '';
+      const m = uidZeile.slice(uidZeile.indexOf(':') + 1).trim().match(/^indibat-gebet-(\d{4})(\d{2})(\d{2})-(fajr|dhuhr|asr|maghrib|isha)$/);
+      const due = zeilen.find((z) => /^DUE[:;]/i.test(z));
+      if (!m || !due) continue;
+      const d = due.slice(due.indexOf(':') + 1).match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})\d{2}(Z)?/);
+      if (!d) continue;
+      // Ohne „Z“ ist es Ortszeit (auch mit TZID), mit „Z“ Weltzeit – wie in Indibat
+      const zeit = d[6] ? new Date(Date.UTC(+d[1], d[2] - 1, +d[3], +d[4], +d[5])) : new Date(+d[1], d[2] - 1, +d[3], +d[4], +d[5]);
+      const tag = `${zeit.getFullYear()}-${pad2(zeit.getMonth() + 1)}-${pad2(zeit.getDate())}`;
+      (tage[tag] || (tage[tag] = {}))[m[4]] = `${pad2(zeit.getHours())}:${pad2(zeit.getMinutes())}`;
+    }
+    return tage;
+  }
+
   /* ---------- Vorschaubilder (über WebAppPassword, Feld „Preview“) ---------- */
   async function vorschau(dateiId, px, signal) {
     const url = `${konto.server}/index.php/apps/webapppassword/core/preview?fileId=${dateiId}&x=${px}&y=${px}&a=${px > 400 ? 1 : 0}&forceIcon=0&mode=cover`;
@@ -261,7 +294,7 @@ const NC = (() => {
     setze(k) { konto = k ? { ...k, server: k.server.replace(/\/+$/, '') } : null; },
     get konto() { return konto; },
     NcFehler, benutzerId, propfind, existiert, ordnerAnlegen, hochladen, freierName, holen, verschieben, loeschen,
-    jsonLesen, jsonAendern, suchen, tagsLesen, tagAnlegen, tagSetzen, dateienMitTag, vorschau, linkErstellen,
+    jsonLesen, jsonAendern, suchen, tagsLesen, tagAnlegen, tagSetzen, dateienMitTag, vorschau, linkErstellen, gebeteLaden,
     webUrl: (ordner) => `${konto.server}/apps/files/?dir=${encodeURIComponent(ordner)}`,
     papierkorbUrl: () => `${konto.server}/apps/files/trashbin`,
   };

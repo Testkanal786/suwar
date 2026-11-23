@@ -2,7 +2,7 @@
 // Suwar – Oberfläche. Galerie, Großansicht, Aufräumen, Teilen, Hochladen, Einstellungen.
 /* global NC, Medien, SuwarStandort, SuwarLogo */
 (() => {
-  const VERSION = '0.1.6';
+  const VERSION = '0.1.7';
   const app = document.getElementById('app');
   const pad = (n) => String(n).padStart(2, '0');
   const istAndroid = /Android/i.test(navigator.userAgent);
@@ -946,7 +946,7 @@
           h('p', null, `${NC.konto.uid || NC.konto.user} auf ${NC.konto.server}`),
           h('button', { class: 'knopf gefahr', onclick: async () => {
             if (!confirm('Abmelden? Zugangsdaten und Zwischenspeicher auf diesem Gerät werden gelöscht.')) return;
-            kontoSpeichern(null); NC.setze(null); Medien.zuruecksetzen();
+            kontoSpeichern(null); NC.setze(null); Medien.zuruecksetzen(); SuwarLogo.gebeteSetzen(null);
             try { await caches.delete('suwar-vorschau'); indexedDB.deleteDatabase('suwar'); } catch { /* egal */ }
             location.hash = ''; location.reload();
           } }, 'Abmelden'),
@@ -954,26 +954,32 @@
       leiste()];
   }
 
-  // Lebendiges Logo: zeigt den Himmel zur Tageszeit; Ort nur auf diesem Gerät gespeichert, auf etwa 10 km gerundet
+  // Lebendiges Logo: Himmel zur Tageszeit, Zeiten aus der Indibat-Liste „Gebete“ (keine eigene Rechnung)
   function himmelKarte() {
     const logo = SuwarLogo.erstellen({ groesse: 64, kachel: true });
     const z = logo.zeichne();
-    const o = SuwarLogo.ort();
     const uhr = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-    const standort = () => {
-      if (!navigator.geolocation) { toast('Standort ist auf diesem Gerät nicht verfügbar'); return; }
-      navigator.geolocation.getCurrentPosition((p) => {
-        SuwarLogo.ortSetzen({ lat: Math.round(p.coords.latitude * 10) / 10, lon: Math.round(p.coords.longitude * 10) / 10, name: 'deinen Standort (auf etwa 10 km gerundet)' });
-        toast('Der Himmel richtet sich jetzt nach deinem Standort'); zeichne();
-      }, () => toast('Standort nicht freigegeben'), { timeout: 15000, maximumAge: 3600000 });
-    };
+    const neuLaden = h('button', { class: 'knopf', onclick: async () => { neuLaden.disabled = true; await gebeteAbholen(true); zeichne(); } }, ic('neu', 18), 'Zeiten neu laden');
+    const zt = z.zeiten;
     return h('section', { class: 'karte' },
       h('div', { class: 'himmel-kopf' }, h('button', { class: 'himmel-logo', 'aria-label': 'Einen Tag ablaufen lassen', onclick: () => logo.abspielen() }, logo.el),
-        h('div', null, h('h2', null, 'Himmel im Logo'), h('p', null, `Jetzt: ${z.phase}`))),
-      h('p', null, `Der Blick im Stern zeigt den Himmel wie gerade draußen – berechnet aus dem Sonnenstand für ${o.name}. Heute: Sonnenaufgang ${uhr(z.zeiten.aufgang)}, Sonnenuntergang ${uhr(z.zeiten.untergang)}. Tippe auf das Logo, dann läuft ein ganzer Tag ab.`),
-      h('div', { class: 'zeile' },
-        h('button', { class: 'knopf', onclick: standort }, ic('standort', 18), o.voreinstellung ? 'Meinen Standort verwenden' : 'Standort neu bestimmen'),
-        o.voreinstellung ? null : h('button', { class: 'knopf', onclick: () => { SuwarLogo.ortSetzen(null); zeichne(); } }, 'Voreinstellung')));
+        h('div', null, h('h2', null, 'Himmel im Logo'), h('p', null, zt ? `Jetzt: ${z.phase}` : 'Keine Gebetszeiten gefunden'))),
+      zt ? h('div', { class: 'gebetszeiten' }, [['Fajr', zt.fajr], ['Dhuhr', zt.dhuhr], ['Asr', zt.asr], ['Maghrib', zt.maghrib], ['Isha', zt.isha]]
+        .map(([n, t]) => h('div', null, h('span', null, n), h('b', null, uhr(t))))) : null,
+      h('p', null, zt
+        ? `Die Zeiten kommen aus deiner Aufgabenliste „Gebete“ in der Nextcloud – dieselben wie in Indibat.${zt.genau ? '' : ` Für heute fehlt der Eintrag, darum gelten die Zeiten vom ${zt.tag.split('-').reverse().join('.')}.`} Tippe auf das Logo, dann läuft ein ganzer Tag ab.`
+        : 'Das Logo richtet sich nach den Zeiten in deiner Aufgabenliste „Gebete“ in der Nextcloud, wie Indibat. Dort stehen für diese Tage keine Zeiten – Indibat trägt sie ein, sobald es auf dem Laptop läuft. Bis dahin zeigt das Logo den Mittagshimmel.'),
+      neuLaden);
+  }
+
+  // Gebetszeiten aus der Liste „Gebete“ holen (beim Start, dann alle 6 Stunden bzw. beim Zurückkehren in die App)
+  async function gebeteAbholen(meldenWennLeer) {
+    if (!NC.konto) return;
+    try {
+      const tage = await NC.gebeteLaden();
+      if (tage && Object.keys(tage).length) SuwarLogo.gebeteSetzen(tage, 'Indibat');
+      else if (meldenWennLeer) toast(tage ? 'Die Liste „Gebete“ ist leer' : 'Keine Aufgabenliste „Gebete“ gefunden');
+    } catch (e) { if (meldenWennLeer) fehler(e); }
   }
 
   /* ----- Einrichtung ----- */
@@ -1073,11 +1079,16 @@
     clearInterval(abgleichTimer);
     abgleichTimer = setInterval(() => {
       if (document.visibilityState !== 'visible' || !NC.konto) return;
+      if (Date.now() - SuwarLogo.gebete().stand > 6 * 3600000) gebeteAbholen();
       if (Date.now() - Medien.zustand.letzterVoll > 10 * 60000) Medien.vollAbgleich().catch(() => {});
       else Medien.neueAbgleichen().catch(() => {});
     }, 20000);
   }
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && NC.konto) { Medien.neueAbgleichen().catch(() => {}); geteiltAbholen().catch(fehler); } });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !NC.konto) return;
+    Medien.neueAbgleichen().catch(() => {}); geteiltAbholen().catch(fehler);
+    if (Date.now() - SuwarLogo.gebete().stand > 6 * 3600000) gebeteAbholen();
+  });
   let malen = 0;
   Medien.beobachten(() => { cancelAnimationFrame(malen); malen = requestAnimationFrame(() => { if (S.sicht === 'galerie' && !ebenen.length) rasterNeu(); }); });
 
@@ -1096,6 +1107,7 @@
     zeichne();
     if (eingerichtet) Medien.vollAbgleich().then(() => { if (S.sicht === 'aufraeumen' && !S.aufr.verlauf.length) { aufrStarten(); zeichne(); } }).catch(fehler);
     geteiltAbholen().catch(fehler);
+    gebeteAbholen();
     abgleichPlanen();
   }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

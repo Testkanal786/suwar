@@ -3,7 +3,7 @@
 Fotos und Videos aus der eigenen Nextcloud – als Web-App (PWA) für Android, iPad und Windows.
 Suwar spricht direkt vom Gerät mit der Nextcloud. Es gibt keinen eigenen Server, und im Code stehen keine Zugangsdaten.
 
-## Was Suwar kann (Stand 0.1.6 – Stufe 1, Bausteine 1–6)
+## Was Suwar kann (Stand 0.1.7 – Stufe 1, Bausteine 1–6)
 
 - **Galerie** im Stil C: randloses Raster nach Tagen, Suche, Filter (Art, Bereich, Beleg, Personen, eigene Orte, Jahr, Monat), Schalter für Screenshots
 - **Kategorien** über einen Bauplan (`/Fotos/.fotoapp/kategorien.json`), in den Einstellungen erweiterbar, ohne neuen Code. Werte werden als Nextcloud-Tags gespeichert (`bereich:Privat`)
@@ -12,7 +12,7 @@ Suwar spricht direkt vom Gerät mit der Nextcloud. Es gibt keinen eigenen Server
 - **Teilen per Link**: Auswahl → Kopie in `/Fotos/Geteilt/<Name>` → öffentlicher Link, optional mit Passwort. Der Standort wird aus den Kopien entfernt (Häkchen „Standort mitgeben“ für Ausnahmen), die Originale bleiben unverändert. Ohne Passwort bekommen Gäste eine gestaltete Seite (`gast.html`)
 - **Hochladen**: Plus-Knopf, unter Android Teilen-Ziel (Galerie → Teilen → Suwar)
 - **Video**: abspielen und ein Standbild als Foto speichern
-- **Lebendiges Logo**: Der Blick im Stern zeigt den Himmel zur jetzigen Tageszeit (Morgengrauen, Tag, Nachmittag, Abend, Nacht mit Mond und Sternen), berechnet aus dem Sonnenstand. Oben rechts in der Galerie, auf der Anmeldeseite und im Browser-Tab. Antippen in den Einstellungen lässt einen ganzen Tag ablaufen
+- **Lebendiges Logo**: Der Blick im Stern zeigt den Himmel zur jetzigen Tageszeit (Morgengrauen, Tag, Nachmittag, Abend, Nacht mit Mond und Sternen). Die Zeiten kommen wie in Indibat aus der Aufgabenliste „Gebete“ in der Nextcloud – Suwar rechnet keine Gebetszeiten selbst. Oben rechts in der Galerie, auf der Anmeldeseite und im Browser-Tab. Antippen in den Einstellungen lässt einen ganzen Tag ablaufen
 - **Einrichtung** beim ersten Start: legt `/Fotos/…` an und verschiebt die Screenshots aus `/SofortUpload/Screenshots`
 
 Kommt noch: Baustein 7 (gemeinsame Ordner mit anderen Benutzern) und Baustein 8 (Gesichtserkennung, lokal auf dem Laptop).
@@ -48,7 +48,7 @@ Update: Änderungen committen, `VERSION` in `sw.js` hochzählen, `git push`.
 |---|---|
 | `js/nc.js` | Nextcloud: WebDAV, Suche (SEARCH), Tags, JSON-Dateien mit If-Match, Vorschau und Freigaben über WebAppPassword |
 | `js/medien.js` | Liste, Zwischenspeicher (IndexedDB), Kategorien, Personen, Orte, Filter, Abgleich (voll alle 10 min, neue Dateien alle 20 s) |
-| `js/logo.js` | lebendiges Logo: Sonnenstand, Fajr/Sonnenaufgang/Dhuhr/Asr/Sonnenuntergang/Isha, Farben je Tageszeit, Favicon |
+| `js/logo.js` | lebendiges Logo: Tageszeiten aus der Gebete-Liste, Farben je Tageszeit, Sonne und Mond nie zugleich, Favicon |
 | `js/standort.js` | entfernt GPS aus JPEG/HEIC (Exif, XMP) und Videos (ISO 6709), ohne die Bilddaten anzufassen |
 | `js/app.js` | Oberfläche |
 | `gast.html`, `js/gast.js` | Gästeseite. Die Dateiliste steckt komprimiert im Link (nach `#`), die Bilder kommen aus der öffentlichen Freigabe |
@@ -60,6 +60,6 @@ Daten in der Nextcloud: `/Fotos/.fotoapp/kategorien.json` (Bauplan), `personen.j
 
 ```
 node test/standort.test.js      # Standort-Entfernung
-node test/logo.test.js          # Sonnenzeiten gegen Referenz, nie Sonne und Mond zugleich
+node test/logo.test.js          # Logo: Zeiten nur aus der Gebete-Liste, nie Sonne und Mond zugleich
 python3 test/e2e.py             # ganzer Durchlauf im Browser gegen eine nachgebaute Nextcloud (test/mock-nextcloud.js)
 ```

@@ -167,8 +167,12 @@ try:
         assert any(x.startswith('/Fotos/Kamera/') and x.endswith('mit-gps.jpg') for x in liste()), liste()
         expect(page.locator('.kachel')).to_have_count(5)
 
-        schritt('Einstellungen: neue Kategorie „Anlass“ erscheint im Filter')
+        schritt('Einstellungen: Logo zeigt die Gebetszeiten aus der Liste „Gebete“, neue Kategorie erscheint im Filter')
         page.get_by_role('button', name='Einstellungen').click()
+        himmel = page.locator('section').filter(has_text='Himmel im Logo')
+        expect(himmel.locator('.gebetszeiten')).to_contain_text('05:41')
+        expect(himmel.locator('.gebetszeiten')).to_contain_text('18:05')
+        expect(himmel).to_contain_text('dieselben wie in Indibat')
         page.get_by_placeholder('z. B. Anlass').fill('Anlass')
         page.get_by_placeholder('Feier, Reise, Alltag').fill('Feier, Reise')
         page.get_by_role('button', name='Kategorie hinzufügen').click()

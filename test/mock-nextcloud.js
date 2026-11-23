@@ -131,6 +131,23 @@ const server = http.createServer((req, res) => {
       if (req.method === 'DELETE') { if (!s.delete(m[2])) return ende(res, 404); return ende(res, 204); }
     }
     if (req.method === 'PROPFIND' && /^\/remote\.php\/dav\/?$/.test(u.pathname)) return ende(res, 207, multi(`<d:response><d:href>/remote.php/dav/</d:href><d:propstat><d:prop><d:current-user-principal><d:href>/remote.php/dav/principals/users/${encodeURIComponent(UID)}/</d:href></d:current-user-principal></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`), 'application/xml');
+    // Kalender: Aufgabenliste „Gebete“ wie von Indibat angelegt (heute, feste Testzeiten; Isha mit TZID, Fajr ohne)
+    if (u.pathname.startsWith('/remote.php/dav/calendars/')) {
+      const cm = decodeURIComponent(u.pathname).match(/^\/remote\.php\/dav\/calendars\/([^/]+)\/(?:([^/]+)\/)?$/);
+      if (!cm || cm[1] !== UID) return ende(res, 404);
+      const basis = `/remote.php/dav/calendars/${encodeURIComponent(UID)}/`;
+      if (req.method === 'PROPFIND' && !cm[2]) {
+        const kal = (href, name, comp) => `<d:response><d:href>${basis}${href}/</d:href><d:propstat><d:prop><d:displayname>${name}</d:displayname><d:resourcetype><d:collection/><cal:calendar/></d:resourcetype><cal:supported-calendar-component-set><cal:comp name="${comp}"/></cal:supported-calendar-component-set></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`;
+        return ende(res, 207, multi(`<d:response><d:href>${basis}</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>` + kal('personal', 'Persönlich', 'VEVENT') + kal('gebete', 'Gebete', 'VTODO')).replace('xmlns:d="DAV:"', 'xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav"'), 'application/xml');
+      }
+      if (req.method === 'REPORT' && cm[2] === 'gebete') {
+        const h = new Date(); const t = `${h.getFullYear()}${String(h.getMonth() + 1).padStart(2, '0')}${String(h.getDate()).padStart(2, '0')}`;
+        const zeiten = { fajr: '054100', dhuhr: '121400', asr: '142000', maghrib: '163000', isha: '180500' };
+        const todo = (k, z) => `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Indibat//DE\r\nBEGIN:VTODO\r\nUID:indibat-gebet-${t}-${k}\r\nSUMMARY:${k}\r\n${k === 'isha' ? 'DUE;TZID=Europe/Berlin' : 'DUE'}:${t}T${z}\r\nEND:VTODO\r\nEND:VCALENDAR\r\n`;
+        return ende(res, 207, multi(Object.entries(zeiten).map(([k, z]) => `<d:response><d:href>${basis}gebete/indibat-gebet-${t}-${k}.ics</d:href><d:propstat><d:prop><cal:calendar-data>${esc(todo(k, z))}</cal:calendar-data></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`).join('')).replace('xmlns:d="DAV:"', 'xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav"'), 'application/xml');
+      }
+      return ende(res, 405);
+    }
     // Suche
     if (req.method === 'SEARCH' && u.pathname.replace(/\/$/, '') === '/remote.php/dav') {
       const b = body.toString();

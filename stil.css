@@ -30,6 +30,10 @@ a { color: var(--akzent); }
 .konto-knopf svg, .himmel-logo svg { display: block; }
 .himmel-kopf { display: flex; align-items: center; gap: 14px; }
 .himmel-kopf p { margin: 2px 0 0; }
+.gebetszeiten { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.gebetszeiten div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; border-radius: 10px; background: var(--chip); }
+.gebetszeiten span { font-size: 12px; color: var(--text2); }
+.gebetszeiten b { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .himmel-logo { border: none; background: none; padding: 0; border-radius: 16px; flex: none; }
 .zaehler { position: absolute; right: -3px; top: -3px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--akzent); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; }
 .chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; }
