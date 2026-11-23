@@ -2,7 +2,7 @@
 // Suwar – Oberfläche. Galerie, Großansicht, Aufräumen, Teilen, Hochladen, Einstellungen.
 /* global NC, Medien, SuwarStandort, SuwarLogo */
 (() => {
-  const VERSION = '0.1.7';
+  const VERSION = '0.1.8';
   const app = document.getElementById('app');
   const pad = (n) => String(n).padStart(2, '0');
   const istAndroid = /Android/i.test(navigator.userAgent);
@@ -450,11 +450,18 @@
     let geste = null;
     let letzterTipp = null;
     const bild = () => buehne.querySelector('img.voll');
+    // Höchstens so weit, bis ein Bildpunkt des Originals etwa 4 Bildschirmpunkte groß ist – mindestens 10-fach, höchstens 40-fach
+    function zoomMax(b, r) {
+      const nw = b.naturalWidth || 0, nh = b.naturalHeight || 0;
+      if (!nw || !nh) return 10;
+      const passend = Math.min(r.width / nw, r.height / nh) * (window.devicePixelRatio || 1);
+      return Math.min(40, Math.max(10, 4 / passend));
+    }
     function zoomSetzen(s, tx, ty, weich) {
       const b = bild();
       if (!b) return;
-      s = Math.min(6, Math.max(1, s));
       const r = buehne.getBoundingClientRect();
+      s = Math.min(zoomMax(b, r), Math.max(1, s));
       const mx = (r.width * (s - 1)) / 2;
       const my = (r.height * (s - 1)) / 2;
       Object.assign(zoom, { s, tx: s === 1 ? 0 : Math.min(mx, Math.max(-mx, tx)), ty: s === 1 ? 0 : Math.min(my, Math.max(-my, ty)) });
