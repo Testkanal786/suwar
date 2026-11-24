@@ -9,10 +9,10 @@
   "background_color": "#FAFAF8",
   "theme_color": "#FAFAF8",
   "icons": [
-    { "src": "icons/suwar-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/suwar-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icons/suwar-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/suwar-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/stern-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/stern-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/stern-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/stern-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "share_target": {
     "action": "./teilen",
