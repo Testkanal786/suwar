@@ -1,192 +1,234 @@
-/* Suwar – Stil C „Hell und ruhig“. Fotos stehen im Vordergrund, die Oberfläche tritt zurück. */
+/* Suwar – Richtung R1 „Stille Galerie“, Darkmode R2 „Nachthimmel“. Regeln und Werte: DESIGN.md, werkzeuge/pruefen/tokens.json */
+@font-face { font-family: "Inter"; font-weight: 400; font-style: normal; font-display: swap; src: url("fonts/inter-latin-400.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 500; font-style: normal; font-display: swap; src: url("fonts/inter-latin-500.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 600; font-style: normal; font-display: swap; src: url("fonts/inter-latin-600.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces"; font-weight: 600; font-style: normal; font-display: swap; src: url("fonts/fraunces-latin-600.woff2") format("woff2"); }
+
 :root {
-  --grund: #FAFAF8; --karte: #FFFFFF; --text: #1C1C1A; --text2: #6B6B66; --akzent: #2B5291; --akzent-hell: #E6ECF5;
-  --chip: #F0F0EC; --rand: rgba(0, 0, 0, .08); --rot: #B42318; --rot-hell: #FBEAEA; --gruen: #1F7A4D;
-  --radius: 12px; --sicher-unten: env(safe-area-inset-bottom, 0px); --sicher-oben: env(safe-area-inset-top, 0px);
-  font-family: "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+  /* Fünf Farb-Tokens (hell) */
+  --grund: #FFFFFF; --flaeche: #F2F3F5; --text: #16181D; --leise: #6B7079; --akzent: #2B5291;
+  /* Ableitungen – keine neuen Farben */
+  --linie: color-mix(in srgb, var(--text) 10%, transparent);
+  --akzent-zart: color-mix(in srgb, var(--akzent) 14%, var(--grund));
+  --auf-akzent: var(--grund);
+  --auf-text: var(--grund);
+  /* Schrift, Ecken, Bewegung */
+  --schrift-text: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --schrift-titel: "Fraunces", Georgia, "Times New Roman", serif;
+  --radius: 12px;
+  --dauer-sofort: 120ms; --dauer-kurz: 180ms; --dauer-mittel: 240ms; --dauer-lang: 360ms;
+  --kurve-standard: cubic-bezier(.23, 1, .32, 1); --kurve-blatt: cubic-bezier(.32, .72, 0, 1);
+  --sicher-unten: env(safe-area-inset-bottom, 0px); --sicher-oben: env(safe-area-inset-top, 0px);
+  color-scheme: light;
+  font-family: var(--schrift-text);
   color: var(--text); background: var(--grund); -webkit-tap-highlight-color: transparent;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Fünf Farb-Tokens (dunkel, R2 „Nachthimmel“) */
+    --grund: #0E1626; --flaeche: #18233A; --text: #EEF1F6; --leise: #8C97AB; --akzent: #E8B04B;
+    color-scheme: dark;
+  }
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
-body { overscroll-behavior-y: contain; }
+body { overscroll-behavior-y: contain; background: var(--grund); }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: var(--akzent); }
+:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .versteckt { display: none !important; }
 .nur-leser { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+h1, h2 { text-wrap: balance; }
 
 /* Grundaufbau */
 #app { min-height: 100%; display: flex; flex-direction: column; }
-.kopf { position: sticky; top: 0; z-index: 5; background: var(--grund); padding: calc(14px + var(--sicher-oben)) 16px 10px; display: flex; flex-direction: column; gap: 10px; }
-.kopf-zeile { display: flex; align-items: center; gap: 10px; }
-.kopf h1 { margin: 0; font-size: 22px; font-weight: 600; flex: 1; }
-.suche { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 6px 0 16px; border-radius: 22px; background: var(--chip); }
-.suche input { flex: 1; min-width: 0; border: none; background: transparent; font-size: 15px; outline: none; }
+.kopf { position: sticky; top: 0; z-index: 5; background: var(--grund); padding: calc(16px + var(--sicher-oben)) 16px 8px; display: flex; flex-direction: column; gap: 8px; }
+.kopf-zeile { display: flex; align-items: center; gap: 8px; }
+.kopf h1 { margin: 0; font: 600 28px/1.1 var(--schrift-titel); flex: 1; }
+.suche { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px 0 16px; border-radius: var(--radius); background: var(--flaeche); color: var(--leise); }
+.suche input { flex: 1; min-width: 0; border: none; background: transparent; font-size: 15px; outline: none; color: var(--text); }
+.suche input::placeholder { color: var(--leise); }
 .suche svg { flex: none; }
-.rund { flex: none; position: relative; width: 44px; height: 44px; border-radius: 22px; border: 1px solid var(--rand); background: var(--karte); display: inline-flex; align-items: center; justify-content: center; padding: 0; }
-.rund.dunkel { background: var(--text); border-color: var(--text); color: #fff; }
-.rund.klein { width: 34px; height: 34px; border: none; background: transparent; }
-.konto-knopf { width: 38px; height: 38px; margin-right: -4px; padding: 2px; border-radius: 12px; border: none; background: none; flex: none; display: grid; place-items: center; }
+.rund { flex: none; position: relative; width: 48px; height: 48px; border-radius: var(--radius); border: none; background: var(--flaeche); color: var(--text); display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.rund.dunkel { background: var(--akzent); color: var(--auf-akzent); }
+.rund.klein { width: 48px; height: 48px; background: transparent; }
+.rund:disabled { opacity: .4; }
+.konto-knopf { width: 48px; height: 48px; margin-right: -8px; padding: 0; border-radius: var(--radius); border: none; background: none; flex: none; display: grid; place-items: center; }
 .konto-knopf svg, .himmel-logo svg { display: block; }
-.himmel-kopf { display: flex; align-items: center; gap: 14px; }
-.himmel-kopf p { margin: 2px 0 0; }
-.gebetszeiten { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.gebetszeiten div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; border-radius: 10px; background: var(--chip); }
-.gebetszeiten span { font-size: 12px; color: var(--text2); }
+.himmel-kopf { display: flex; align-items: center; gap: 16px; }
+.himmel-kopf p { margin: 4px 0 0; }
+.gebetszeiten { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.gebetszeiten div { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; border-radius: var(--radius); background: var(--flaeche); }
+.gebetszeiten span { font-size: 12px; color: var(--leise); }
 .gebetszeiten b { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.himmel-logo { border: none; background: none; padding: 0; border-radius: 16px; flex: none; }
-.zaehler { position: absolute; right: -3px; top: -3px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--akzent); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+.himmel-logo { border: none; background: none; padding: 0; border-radius: var(--radius); flex: none; }
+.zaehler { position: absolute; right: -4px; top: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--radius); background: var(--akzent); color: var(--auf-akzent); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; }
 .chips::-webkit-scrollbar { display: none; }
-.chip { flex: none; height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--rand); background: var(--karte); font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
-.chip.an { background: var(--text); color: #fff; border-color: var(--text); }
-.chip.filter { background: var(--akzent-hell); color: var(--akzent); border-color: transparent; }
-.chip.text { border: none; background: transparent; color: var(--akzent); padding: 0 4px; }
-.inhalt { flex: 1; padding-bottom: calc(76px + var(--sicher-unten)); }
+.chip { flex: none; height: 32px; padding: 0 16px; border-radius: var(--radius); border: none; background: var(--flaeche); color: var(--text); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
+.chip.an { background: var(--akzent); color: var(--auf-akzent); }
+.chip.filter { background: var(--akzent-zart); color: var(--text); }
+.chip.text { background: transparent; color: var(--akzent); padding: 0 8px; }
+.inhalt { flex: 1; padding-bottom: calc(64px + 16px + var(--sicher-unten)); }
 
 /* Leiste unten */
-.leiste { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; padding: 4px 8px calc(8px + var(--sicher-unten)); background: var(--karte); border-top: 1px solid var(--rand); }
-.leiste a, .leiste button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 0; text-decoration: none; color: var(--text2); font-size: 11px; border: none; background: none; }
+.leiste { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; padding: 8px 8px calc(8px + var(--sicher-unten)); background: var(--grund); border-top: 1px solid var(--linie); }
+.leiste a, .leiste button { flex: 1; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0; text-decoration: none; color: var(--leise); font-size: 12px; font-weight: 500; border: none; background: none; }
 .leiste .an { color: var(--akzent); }
 .leiste.aktionen button { color: var(--text); }
-.leiste.aktionen button.gefahr { color: var(--rot); }
+.leiste.aktionen button.gefahr { color: var(--text); font-weight: 600; }
 
 /* Galerie */
-.tag-kopf { padding: 14px 16px 6px; font-size: 13px; font-weight: 600; color: var(--text2); letter-spacing: .02em; text-transform: uppercase; display: flex; justify-content: space-between; }
+.tag-kopf { padding: 24px 16px 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font: 600 22px/1.15 var(--schrift-titel); color: var(--text); }
+.tag-kopf > :not(:first-child) { font: 400 13px/1 var(--schrift-text); color: var(--leise); }
 .raster { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; }
 @media (min-width: 700px) { .raster { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 @media (min-width: 1100px) { .raster { grid-template-columns: repeat(8, minmax(0, 1fr)); } .inhalt, .kopf { max-width: 1400px; width: 100%; margin: 0 auto; } }
-.kachel { position: relative; aspect-ratio: 1; background: #E6E6E1; border: none; padding: 0; overflow: hidden; display: block; width: 100%; }
-.kachel img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .2s; }
+.kachel { position: relative; aspect-ratio: 1; background: var(--flaeche); border: none; padding: 0; overflow: hidden; display: block; width: 100%; }
+.kachel img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity var(--dauer-mittel) ease; }
 .kachel img.da { opacity: 1; }
-.kachel .marke { position: absolute; right: 5px; bottom: 5px; display: flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: 9px; background: rgba(0, 0, 0, .5); color: #fff; font-size: 11px; }
-.kachel .auswahl { position: absolute; left: 6px; top: 6px; width: 22px; height: 22px; border-radius: 11px; border: 2px solid #fff; background: rgba(0, 0, 0, .15); }
+/* Ausnahme Bildschleier: nur auf Fotos (DESIGN.md 3) */
+.kachel .marke { position: absolute; right: 4px; bottom: 4px; display: flex; align-items: center; gap: 4px; padding: 0 8px; height: 18px; border-radius: var(--radius); background: rgba(0, 0, 0, .5); color: #FFFFFF; font-size: 12px; }
+.kachel .auswahl { position: absolute; left: 8px; top: 8px; width: 24px; height: 24px; border-radius: var(--radius); border: 2px solid #FFFFFF; background: rgba(0, 0, 0, .5); }
 .kachel.gewaehlt { outline: 3px solid var(--akzent); outline-offset: -3px; }
-.kachel.gewaehlt .auswahl { background: var(--akzent); }
-.kachel.gewaehlt .auswahl::after { content: ""; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
-.leer { padding: 48px 24px; text-align: center; color: var(--text2); line-height: 1.6; }
-.leer h2 { color: var(--text); font-size: 18px; margin: 0 0 8px; }
-.ladestreifen { height: 3px; background: linear-gradient(90deg, transparent, var(--akzent), transparent); background-size: 50% 100%; animation: laden 1.2s linear infinite; }
-@keyframes laden { from { background-position: -50% 0; } to { background-position: 150% 0; } }
+.kachel.gewaehlt .auswahl { background: var(--akzent); border-color: var(--akzent); }
+.kachel.gewaehlt .auswahl::after { content: ""; position: absolute; left: 6px; top: 2px; width: 6px; height: 11px; border: solid var(--auf-akzent); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.leer { padding: 48px 24px; text-align: center; color: var(--leise); line-height: 1.6; font-size: 15px; }
+.leer h2 { color: var(--text); font: 600 22px/1.2 var(--schrift-titel); margin: 0 0 8px; }
+.ladestreifen { height: 3px; position: relative; overflow: hidden; background: var(--flaeche); }
+.ladestreifen::after { content: ""; position: absolute; inset: 0; width: 40%; background: var(--akzent); animation: laden 1.2s linear infinite; }
+@keyframes laden { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
 /* Karten, Formulare, Listen */
 .seite { padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 16px; max-width: 720px; width: 100%; margin: 0 auto; }
-.karte { background: var(--karte); border: 1px solid var(--rand); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.karte { background: var(--grund); border: 1px solid var(--linie); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 16px; }
 .karte h2 { margin: 0; font-size: 17px; font-weight: 600; }
-.karte p { margin: 0; color: var(--text2); line-height: 1.55; font-size: 14px; }
-label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text2); }
-.feld input, .feld select, .feld textarea { width: 100%; min-width: 0; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--rand); background: var(--grund); font-size: 15px; color: var(--text); }
-.feld textarea { height: 80px; padding: 10px 12px; }
-.knopf { height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--rand); background: var(--chip); font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; color: var(--text); }
-.knopf.haupt { background: var(--text); color: #fff; border-color: var(--text); }
-.knopf.gefahr { color: var(--rot); background: var(--rot-hell); border-color: transparent; }
+.karte p { margin: 0; color: var(--leise); line-height: 1.55; font-size: 15px; }
+label.feld { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 500; color: var(--leise); }
+.feld input, .feld select, .feld textarea { width: 100%; min-width: 0; height: 48px; padding: 0 16px; border-radius: var(--radius); border: 1px solid var(--linie); background: var(--flaeche); font-size: 15px; color: var(--text); }
+.feld textarea { height: 96px; padding: 8px 16px; }
+.knopf { height: 48px; padding: 0 16px; border-radius: var(--radius); border: none; background: var(--flaeche); font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; color: var(--text); }
+.knopf.haupt { background: var(--text); color: var(--auf-text); }
+.knopf.gefahr { background: var(--flaeche); color: var(--text); font-weight: 600; }
 .knopf:disabled { opacity: .5; }
-.zeile { display: flex; gap: 10px; align-items: center; }
+.zeile { display: flex; gap: 8px; align-items: center; }
 .zeile > .knopf { flex: 1; }
 /* Feld neben Knopf oder Feld: Felder teilen sich die Breite, nichts ragt über die Karte hinaus */
 .zeile > .feld { flex: 1; min-width: 0; }
 .zeile:has(> .feld) { align-items: flex-end; }
 .zeile:has(> .feld) > .knopf { flex: none; }
 .liste { display: flex; flex-direction: column; }
-.liste > * { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rand); }
+.liste > * { display: flex; align-items: center; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--linie); }
 .liste > *:last-child { border-bottom: none; }
-.liste .wachsen { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.liste .klein { font-size: 13px; color: var(--text2); overflow-wrap: anywhere; }
-.haken { display: flex; align-items: center; gap: 10px; font-size: 15px; }
-.haken input { width: 20px; height: 20px; }
-.protokoll { font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--chip); border-radius: 10px; padding: 10px; max-height: 180px; overflow: auto; white-space: pre-wrap; }
-.fortschritt { height: 6px; border-radius: 3px; background: var(--chip); overflow: hidden; }
-.fortschritt > div { height: 100%; background: var(--akzent); width: 0; transition: width .2s; }
-.hinweis { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text2); line-height: 1.5; margin: 0; }
+.liste .wachsen { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.liste .klein { font-size: 13px; color: var(--leise); overflow-wrap: anywhere; }
+.haken { display: flex; align-items: center; gap: 8px; font-size: 15px; min-height: 48px; }
+.haken input { width: 24px; height: 24px; accent-color: var(--akzent); }
+.protokoll { font-family: var(--schrift-text); font-variant-numeric: tabular-nums; font-size: 12px; background: var(--flaeche); border-radius: var(--radius); padding: 8px 16px; max-height: 180px; overflow: auto; white-space: pre-wrap; }
+.fortschritt { height: 8px; border-radius: var(--radius); background: var(--flaeche); overflow: hidden; }
+.fortschritt > div { height: 100%; background: var(--akzent); width: 100%; transform-origin: left; transform: scaleX(0); transition: transform var(--dauer-mittel) var(--kurve-standard); }
+.hinweis { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--leise); line-height: 1.5; margin: 0; }
 .hinweis svg { flex: none; margin-top: 2px; }
-code { background: var(--chip); padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+code { background: var(--flaeche); padding: 0 4px; border-radius: var(--radius); font-size: 13px; }
 
-/* Blatt (von unten) */
-.schleier { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, .35); display: flex; align-items: flex-end; justify-content: center; }
-.blatt { width: 100%; max-width: 560px; max-height: 88vh; overflow: auto; background: var(--karte); border-radius: 20px 20px 0 0; padding: 10px 18px calc(18px + var(--sicher-unten)); display: flex; flex-direction: column; gap: 14px; }
-.blatt .griff { width: 40px; height: 4px; border-radius: 2px; background: var(--rand); margin: 0 auto 4px; }
-.blatt h2 { margin: 0; font-size: 18px; font-weight: 600; }
-.blatt h3 { margin: 4px 0 0; font-size: 13px; color: var(--text2); font-weight: 600; }
-@media (min-width: 700px) { .schleier { align-items: center; } .blatt { border-radius: 20px; } }
+/* Blatt (von unten) – Ausnahme Abdunklung (DESIGN.md 3) */
+.schleier { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
+/* Die Abdunklung liegt auf einer eigenen Ebene, damit nur sie überblendet und das Blatt deckend bleibt */
+.schleier::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, .4); }
+.blatt { position: relative; width: 100%; max-width: 560px; max-height: 88vh; overflow: auto; background: var(--grund); border-radius: var(--radius) var(--radius) 0 0; padding: 8px 16px calc(16px + var(--sicher-unten)); display: flex; flex-direction: column; gap: 16px; }
+.blatt .griff { width: 40px; height: 4px; border-radius: var(--radius); background: var(--linie); margin: 0 auto; }
+.blatt h2 { margin: 0; font: 600 22px/1.2 var(--schrift-titel); }
+.blatt h3 { margin: 8px 0 0; font-size: 13px; color: var(--leise); font-weight: 600; }
+@media (min-width: 700px) { .schleier { align-items: center; } .blatt { border-radius: var(--radius); } }
 
-/* Großansicht */
-.ansicht { position: fixed; inset: 0; z-index: 30; background: #0E0F10; color: #F2F2F2; display: flex; flex-direction: column; }
-.ansicht-kopf, .ansicht-fuss { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
-.ansicht-kopf { padding-top: calc(10px + var(--sicher-oben)); }
-.ansicht-fuss { padding-bottom: calc(10px + var(--sicher-unten)); justify-content: space-around; }
-.ansicht .rund { background: rgba(255, 255, 255, .1); border: none; color: #fff; }
-.ansicht-titel { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 13px; color: #B9B9B4; }
-.ansicht-titel b { color: #fff; font-size: 15px; font-weight: 500; }
+/* Großansicht – derselbe Grund wie die App (R1b/R2b) */
+.ansicht { position: fixed; inset: 0; z-index: 30; background: var(--grund); color: var(--text); display: flex; flex-direction: column; }
+.ansicht-kopf, .ansicht-fuss { display: flex; align-items: center; gap: 8px; padding: 8px; }
+.ansicht-kopf { padding-top: calc(8px + var(--sicher-oben)); }
+.ansicht-fuss { padding-bottom: calc(8px + var(--sicher-unten)); justify-content: space-around; }
+.ansicht .rund { background: transparent; color: var(--text); }
+.ansicht-titel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--leise); font-variant-numeric: tabular-nums; }
+.ansicht-titel b { color: var(--text); font-size: 15px; font-weight: 600; }
 .buehne { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; touch-action: none; overflow: hidden; }
 .buehne img, .buehne video { max-width: 100%; max-height: 100%; object-fit: contain; }
 /* Bild immer in voller Anzeigegröße – egal ob kleines Vorschaubild oder großes Bild, nichts springt */
 .buehne img.voll { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; transform-origin: center; will-change: transform; user-select: none; -webkit-user-drag: none; }
 .buehne video { touch-action: auto; }
-.buehne .lade { position: absolute; color: #B9B9B4; font-size: 14px; }
-.ansicht-fuss button { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: #F2F2F2; font-size: 11px; padding: 6px 10px; }
+.buehne .lade { position: absolute; color: var(--leise); font-size: 13px; }
+.ansicht-fuss button { min-width: 64px; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: none; border: none; border-radius: var(--radius); color: var(--text); font-size: 12px; font-weight: 500; padding: 0 8px; }
 .ansicht-mitte { flex: 1; min-height: 0; position: relative; display: flex; }
 .ansicht-mitte .buehne { flex: 1; }
-/* Info legt sich über den unteren Bildrand und verschiebt nichts */
-.info { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 28px 16px 14px; font-size: 13px; line-height: 1.5; color: #D6D8DA; display: flex; flex-wrap: wrap; gap: 4px 14px;
-  background: linear-gradient(to top, rgba(14, 15, 16, .92) 60%, rgba(14, 15, 16, 0)); opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .22s ease, transform .22s ease; }
+/* Info legt sich über den unteren Bildrand und verschiebt nichts – einfarbige Fläche, kein Verlauf */
+.info { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 16px; font-size: 13px; line-height: 1.5; color: var(--text); font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; gap: 4px 16px;
+  background: color-mix(in srgb, var(--grund) 94%, transparent); border-top: 1px solid var(--linie);
+  opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity var(--dauer-kurz) var(--kurve-standard), transform var(--dauer-kurz) var(--kurve-standard); }
 .info.offen { opacity: 1; transform: none; pointer-events: auto; }
-.ansicht .rund.an { background: rgba(255, 255, 255, .24); }
+.ansicht .rund.an { background: var(--flaeche); }
 
 /* Aufräum-Modus */
-.aufraeumen { flex: 1; display: flex; flex-direction: column; padding: 4px 18px calc(84px + var(--sicher-unten)); gap: 12px; max-width: 560px; width: 100%; margin: 0 auto; }
+.aufraeumen { flex: 1; display: flex; flex-direction: column; padding: 8px 16px calc(64px + 16px + var(--sicher-unten)); gap: 16px; max-width: 560px; width: 100%; margin: 0 auto; }
 .stapel { position: relative; flex: 1; min-height: 300px; }
-.stapel .hinten { position: absolute; left: 14px; right: 14px; top: 12px; bottom: 50px; border-radius: 18px; background: #EDEDE8; }
-.foto-karte { position: absolute; inset: 0 0 38px; border-radius: 18px; background: var(--karte); border: 1px solid var(--rand); display: flex; flex-direction: column; overflow: hidden; touch-action: none; user-select: none; transition: transform .25s, opacity .25s; }
-.foto-karte .bild { flex: 1; min-height: 0; background: #E6E6E1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.stapel .hinten { position: absolute; left: 16px; right: 16px; top: 16px; bottom: 48px; border-radius: var(--radius); background: var(--flaeche); }
+.foto-karte { position: absolute; inset: 0 0 40px; border-radius: var(--radius); background: var(--grund); border: 1px solid var(--linie); display: flex; flex-direction: column; overflow: hidden; touch-action: none; user-select: none; transition: transform var(--dauer-mittel) var(--kurve-standard), opacity var(--dauer-mittel) var(--kurve-standard); }
+.foto-karte .bild { flex: 1; min-height: 0; background: var(--flaeche); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .foto-karte .bild img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
-.foto-karte .unter { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; }
-.foto-karte .stempel { position: absolute; top: 18px; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 16px; border: 2px solid; opacity: 0; background: rgba(255, 255, 255, .9); }
-.stempel.weg { right: 18px; color: var(--rot); }
-.stempel.bleibt { left: 18px; color: var(--gruen); }
-.wisch-hinweis { position: absolute; left: 0; right: 0; bottom: 8px; display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); padding: 0 4px; }
-.entscheiden { display: flex; justify-content: center; align-items: center; gap: 26px; }
-.entscheiden .gross { width: 64px; height: 64px; border-radius: 32px; }
-.marke-rot { padding: 3px 9px; border-radius: 11px; background: var(--rot-hell); color: var(--rot); font-size: 12px; white-space: nowrap; }
+.foto-karte .unter { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 16px; font-size: 13px; color: var(--leise); }
+.foto-karte .stempel { position: absolute; top: 16px; padding: 4px 16px; border-radius: var(--radius); font-weight: 600; font-size: 17px; border: 2px solid; opacity: 0; background: var(--grund); }
+.stempel.weg { right: 16px; color: var(--text); }
+.stempel.bleibt { left: 16px; color: var(--akzent); }
+.wisch-hinweis { position: absolute; left: 0; right: 0; bottom: 8px; display: flex; justify-content: space-between; font-size: 13px; color: var(--leise); padding: 0 4px; }
+.entscheiden { display: flex; justify-content: center; align-items: center; gap: 24px; }
+.entscheiden .gross { width: 64px; height: 64px; }
+.entscheiden .gross:last-child { background: var(--akzent); color: var(--auf-akzent); }
+.marke-rot { padding: 4px 8px; border-radius: var(--radius); background: var(--flaeche); color: var(--text); font-size: 12px; font-weight: 600; white-space: nowrap; }
 
 /* Hinweis unten */
-.toast { position: fixed; left: 50%; bottom: calc(92px + var(--sicher-unten)); transform: translateX(-50%); z-index: 50; background: var(--text); color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 14px; display: flex; gap: 12px; align-items: center; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0, 0, 0, .2); }
-.toast button { background: none; border: none; color: #9EB6E0; font-weight: 600; padding: 0; }
+.toast { position: fixed; left: 50%; bottom: calc(96px + var(--sicher-unten)); transform: translateX(-50%); z-index: 50; background: var(--text); color: var(--auf-text); padding: 8px 16px; min-height: 48px; border-radius: var(--radius); font-size: 15px; display: flex; gap: 16px; align-items: center; max-width: calc(100% - 32px); }
+.toast button { background: none; border: none; color: var(--auf-text); font-weight: 600; text-decoration: underline; padding: 0; min-height: 48px; }
 
 /* Anmeldung */
-.anmeldung { max-width: 440px; margin: 0 auto; padding: calc(48px + var(--sicher-oben)) 20px 32px; display: flex; flex-direction: column; gap: 18px; }
-.anmeldung .logo { width: 72px; height: 72px; display: block; filter: drop-shadow(0 4px 12px rgba(28, 28, 26, .10)); }
-.anmeldung h1 { margin: 0; font-size: 28px; }
-.fehler { color: var(--rot); font-size: 14px; }
+.anmeldung { max-width: 440px; margin: 0 auto; padding: calc(48px + var(--sicher-oben)) 24px 32px; display: flex; flex-direction: column; gap: 16px; }
+.anmeldung .logo { width: 72px; height: 72px; display: block; }
+.anmeldung h1 { margin: 8px 0 0; font: 600 28px/1.1 var(--schrift-titel); }
+.fehler { color: var(--text); font-size: 15px; font-weight: 600; }
 
-/* ---------- Bewegung: ruhig, kurz, in Richtung der Handlung ---------- */
-.knopf, .chip, .rund, .leiste button, .kachel, .ansicht-fuss button { transition: transform .12s ease, background-color .15s ease, color .15s ease, border-color .15s ease, opacity .15s ease; }
+/* ---------- Bewegung: DESIGN.md 7 ---------- */
+.knopf, .chip, .rund, .leiste button, .ansicht-fuss button { transition: transform var(--dauer-sofort) var(--kurve-standard), background-color var(--dauer-sofort) ease, color var(--dauer-sofort) ease, opacity var(--dauer-sofort) ease; }
 .knopf:active, .chip:active, .rund:active, .leiste button:active, .ansicht-fuss button:active { transform: scale(.96); }
+.kachel { transition: transform var(--dauer-sofort) var(--kurve-standard); }
 .kachel:active { transform: scale(.97); }
-.kachel { transition: transform .12s ease, outline-color .15s ease; }
 @media (prefers-reduced-motion: no-preference) {
-  .einblenden { animation: einblenden .22s ease-out; }
-  .schleier { animation: einblenden .2s ease-out; }
-  .schleier .blatt { animation: hochgleiten .3s cubic-bezier(.2, .8, .2, 1); }
-  .schleier.zu { animation: ausblenden .2s ease-in forwards; }
-  .schleier.zu .blatt { animation: runtergleiten .2s ease-in forwards; }
-  .ansicht { animation: ansichtEin .22s ease-out; }
-  .ansicht.zu { animation: ausblenden .2s ease-in forwards; }
-  .toast { animation: toastEin .25s cubic-bezier(.2, .8, .2, 1); }
-  .toast.zu { animation: toastAus .2s ease-in forwards; }
-  .buehne img.voll.rein-rechts { animation: reinRechts .26s cubic-bezier(.2, .8, .2, 1); }
-  .buehne img.voll.rein-links { animation: reinLinks .26s cubic-bezier(.2, .8, .2, 1); }
-  .buehne video.weich { animation: einblenden .25s ease-out; }
-  .foto-karte.neu { animation: karteEin .28s cubic-bezier(.2, .8, .2, 1); }
-  .leer { animation: einblenden .3s ease-out; }
+  .einblenden { animation: einblenden var(--dauer-mittel) var(--kurve-standard); }
+  .schleier::before { animation: einblenden var(--dauer-mittel) var(--kurve-standard); }
+  .schleier .blatt { animation: hochgleiten var(--dauer-lang) var(--kurve-blatt); }
+  .schleier.zu::before { animation: ausblenden var(--dauer-mittel) var(--kurve-standard) forwards; }
+  .schleier.zu .blatt { animation: runtergleiten var(--dauer-mittel) var(--kurve-blatt) forwards; }
+  .ansicht { animation: ansichtEin var(--dauer-mittel) var(--kurve-standard); }
+  .ansicht.zu { animation: ausblenden var(--dauer-kurz) var(--kurve-standard) forwards; }
+  .toast { animation: toastEin var(--dauer-mittel) var(--kurve-standard); }
+  .toast.zu { animation: toastAus var(--dauer-kurz) var(--kurve-standard) forwards; }
+  .buehne img.voll.rein-rechts { animation: reinRechts var(--dauer-mittel) var(--kurve-standard); }
+  .buehne img.voll.rein-links { animation: reinLinks var(--dauer-mittel) var(--kurve-standard); }
+  .buehne video.weich { animation: einblenden var(--dauer-mittel) var(--kurve-standard); }
+  .foto-karte.neu { animation: karteEin var(--dauer-lang) var(--kurve-standard); }
+  .leer { animation: einblenden var(--dauer-lang) var(--kurve-standard); }
 }
 @keyframes einblenden { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ausblenden { from { opacity: 1; } to { opacity: 0; } }
-@keyframes hochgleiten { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
-@keyframes runtergleiten { from { transform: none; } to { transform: translateY(48px); opacity: 0; } }
+/* Blatt bleibt deckend und gleitet ganz von unten herein – nichts scheint durch */
+@keyframes hochgleiten { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes runtergleiten { from { transform: none; } to { transform: translateY(100%); } }
 @keyframes ansichtEin { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
 @keyframes toastEin { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes toastAus { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, 8px); } }
 @keyframes reinRechts { from { transform: translateX(28%); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes reinLinks { from { transform: translateX(-28%); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes karteEin { from { transform: scale(.94) translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+@keyframes karteEin { from { transform: scale(.96) translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  /* nur Überblenden: keine Verschiebung, keine Skalierung */
+  *, *::before, *::after { transition-property: opacity, background-color, color !important; }
+  .einblenden, .schleier::before, .schleier .blatt, .ansicht, .toast, .leer, .foto-karte.neu, .buehne img.voll.rein-rechts, .buehne img.voll.rein-links { animation: einblenden var(--dauer-kurz) ease; }
+  .schleier.zu::before, .schleier.zu .blatt, .ansicht.zu, .toast.zu { animation: ausblenden var(--dauer-kurz) ease forwards; }
+  .toast, .toast.zu { transform: translateX(-50%); }
+}

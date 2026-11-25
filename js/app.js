@@ -2,7 +2,7 @@
 // Suwar – Oberfläche. Galerie, Großansicht, Aufräumen, Teilen, Hochladen, Einstellungen.
 /* global NC, Medien, SuwarStandort, SuwarLogo */
 (() => {
-  const VERSION = '0.1.8';
+  const VERSION = '0.1.9';
   const app = document.getElementById('app');
   const pad = (n) => String(n).padStart(2, '0');
   const istAndroid = /Android/i.test(navigator.userAgent);
@@ -42,13 +42,23 @@
     s.append(p);
     return s;
   }
+  // Ausblenden mit der Animation aus stil.css, entfernen erst, wenn sie wirklich fertig ist (DESIGN.md 7 – kein fester Zeitgeber)
+  function wegAnimieren(el) {
+    el.classList.add('zu');
+    const laufend = el.getAnimations ? el.getAnimations({ subtree: true }) : [];
+    if (!laufend.length) { el.remove(); return; }
+    let fertig = false;
+    const weg = () => { if (!fertig) { fertig = true; el.remove(); } };
+    Promise.all(laufend.map((a) => a.finished)).then(weg, weg);
+    setTimeout(weg, 1000); // Rückfall, falls eine Animation hängen bleibt
+  }
   let toastTimer = 0;
   function toast(text, aktion) {
     document.querySelectorAll('.toast').forEach((t) => t.remove());
     const el = h('div', { class: 'toast', role: 'status' }, h('span', null, text), aktion && h('button', { onclick: () => { el.remove(); aktion.fn(); } }, aktion.text));
     document.body.append(el);
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { el.classList.add('zu'); setTimeout(() => el.remove(), 200); }, aktion ? 7000 : 3500);
+    toastTimer = setTimeout(() => wegAnimieren(el), aktion ? 7000 : 3500);
   }
   const fehler = (e) => { console.error(e); toast(e && e.message ? e.message : 'Unbekannter Fehler'); };
   const datumLang = (t) => new Date(t).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
@@ -69,8 +79,7 @@
     const e = ebenen.pop();
     if (!e) return false;
     // erst ausblenden, dann entfernen – nichts verschwindet schlagartig
-    if (wenigBewegung()) e.el.remove();
-    else { e.el.classList.add('zu'); setTimeout(() => e.el.remove(), 200); }
+    wegAnimieren(e.el);
     if (e.beimSchliessen) e.beimSchliessen();
     return true;
   }
@@ -230,7 +239,7 @@
     filterKnopf = h('button', { class: 'rund', 'aria-label': 'Filter', onclick: filterBlatt }, ic('filter', 20));
     const kopf = h('header', { class: 'kopf' },
       h('div', { class: 'kopf-zeile' },
-        h('label', { class: 'suche' }, ic('suche', 20, '#6B6B66'), suche, h('button', { class: 'konto-knopf', 'aria-label': 'Einstellungen', title: 'Einstellungen', onclick: () => wechseln('einstellungen') }, SuwarLogo.erstellen({ groesse: 34, schmuck: true }).el)),
+        h('label', { class: 'suche' }, ic('suche', 20), suche, h('button', { class: 'konto-knopf', 'aria-label': 'Einstellungen', title: 'Einstellungen', onclick: () => wechseln('einstellungen') }, SuwarLogo.erstellen({ groesse: 34, schmuck: true }).el)),
         filterKnopf,
         h('button', { class: 'rund dunkel', 'aria-label': 'Fotos hinzufügen', onclick: plusBlatt }, ic('plus', 20))));
     chipsEl = h('div', { class: 'chips' });
@@ -306,7 +315,7 @@
     const gewaehlt = S.auswahl && S.auswahl.has(m.id);
     const el = h('button', { class: 'kachel' + (gewaehlt ? ' gewaehlt' : ''), 'data-id': m.id, 'aria-label': `${m.art} vom ${datumKurz(m.datum)}`, 'aria-pressed': S.auswahl ? String(!!gewaehlt) : null },
       h('img', { alt: '', decoding: 'async' }),
-      m.video ? h('span', { class: 'marke' }, ic('abspielen', 10, '#fff'), 'Video') : null,
+      m.video ? h('span', { class: 'marke' }, ic('abspielen', 12), 'Video') : null,
       S.auswahl ? h('span', { class: 'auswahl' }) : null);
     let druck = 0;
     let lang = false;
@@ -682,7 +691,7 @@
         for (let k = 0; k < medien.length; k++) {
           const m = medien[k];
           status.textContent = `${k + 1} von ${medien.length}: ${m.name}`;
-          balken.style.width = `${Math.round((k / medien.length) * 100)}%`;
+          balken.style.transform = `scaleX(${k / medien.length})`;
           const blob = await NC.holen(m.pfad);
           let daten = blob;
           if (!standort.checked && blob.size < 450e6) {
@@ -696,7 +705,7 @@
           await NC.hochladen(`${ordner}/${dn}`, daten, { typ: m.mime, mtime: m.datum, ueberschreiben: true });
           dateien.push([dn, m.video ? 1 : 0]);
         }
-        balken.style.width = '100%';
+        balken.style.transform = 'scaleX(1)';
         status.textContent = 'Link wird erstellt …';
         const pw = passwort.value.trim();
         let link = null;
@@ -781,7 +790,7 @@
     const kopf = h('header', { class: 'kopf' },
       h('div', { class: 'kopf-zeile' }, h('h1', null, 'Aufräumen'), h('span', { class: 'klein' }, gesamt ? `${Math.min(a.index + 1, gesamt)} / ${gesamt}` : '')),
       h('div', { class: 'chips' }, Object.entries(MENGEN).map(([id, [text]]) => h('button', { class: 'chip' + (a.menge === id ? ' an' : ''), 'aria-pressed': String(a.menge === id), onclick: () => { a.menge = id; aufrStarten(); zeichne(); } }, text))),
-      h('div', { class: 'fortschritt', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(gesamt), 'aria-valuenow': String(a.index) }, (() => { const d = h('div'); d.style.width = gesamt ? `${(a.index / gesamt) * 100}%` : '0'; return d; })()));
+      h('div', { class: 'fortschritt', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(gesamt), 'aria-valuenow': String(a.index) }, (() => { const d = h('div'); d.style.transform = `scaleX(${gesamt ? a.index / gesamt : 0})`; return d; })()));
     if (!m) {
       return [kopf, h('main', { class: 'aufraeumen' }, h('div', { class: 'leer' }, h('h2', null, gesamt ? 'Fertig für heute' : 'Hier ist alles geprüft'),
         gesamt ? `${a.verlauf.filter((v) => v.aktion === 'weg').length} gelöscht, ${a.verlauf.filter((v) => v.aktion === 'bleibt').length} behalten.` : `In „${MENGEN[a.menge][0]}“ gibt es nichts Ungeprüftes.`,
@@ -834,9 +843,9 @@
         h('div', { class: 'stapel' }, h('div', { class: 'hinten' }), karte, h('div', { class: 'wisch-hinweis' }, h('span', null, '← wischen: löschen'), h('span', null, 'behalten: wischen →'))),
         h('div', null, h('div', { class: 'klein' }, 'Schnell zuordnen'), schnell),
         h('div', { class: 'entscheiden' },
-          h('button', { class: 'rund gross', 'aria-label': 'Löschen', onclick: () => hinaus(karte, -1) }, ic('x', 28, '#B42318')),
-          h('button', { class: 'rund', 'aria-label': 'Rückgängig', disabled: !a.verlauf.length || null, onclick: rueckgaengig }, ic('rueckgaengig', 22, '#6B6B66')),
-          h('button', { class: 'rund gross', 'aria-label': 'Behalten', onclick: () => hinaus(karte, 1) }, ic('haken', 28, '#1F7A4D')))),
+          h('button', { class: 'rund gross', 'aria-label': 'Löschen', onclick: () => hinaus(karte, -1) }, ic('x', 28)),
+          h('button', { class: 'rund', 'aria-label': 'Rückgängig', disabled: !a.verlauf.length || null, onclick: rueckgaengig }, ic('rueckgaengig', 22)),
+          h('button', { class: 'rund gross', 'aria-label': 'Behalten', onclick: () => hinaus(karte, 1) }, ic('haken', 28)))),
       leiste()];
   }
   // Karte in Wischrichtung hinausgleiten lassen, dann entscheiden (bei Knopfdruck wie beim Wischen)
@@ -1014,7 +1023,7 @@
               await NC.verschieben(d.pfad, `/Fotos/Screenshots/${ziel}`);
               n++;
             } catch (e) { log(`  ${name}: ${e.message}`); }
-            balken.style.width = `${Math.round(((n + 1) / dateien.length) * 100)}%`;
+            balken.style.transform = `scaleX(${(n + 1) / dateien.length})`;
           }
           log(`${n} von ${dateien.length} verschoben.`);
         } else log('Keine Screenshots in /SofortUpload/Screenshots zum Verschieben.');

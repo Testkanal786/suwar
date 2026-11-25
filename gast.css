@@ -1,13 +1,14 @@
-/* Gästeseite: so sehen Empfänger einen Suwar-Link (Entwurf C4). */
-.g-kopf { max-width: 1200px; margin: 0 auto; padding: calc(28px + var(--sicher-oben)) 20px 16px; display: flex; flex-direction: column; gap: 8px; }
-.g-kopf h1 { margin: 0; font-size: 26px; font-weight: 600; }
-.g-kopf .klein { color: var(--text2); font-size: 14px; }
-.g-kopf .knopf { align-self: flex-start; margin-top: 6px; }
-.mauer { max-width: 1200px; margin: 0 auto; padding: 0 12px; columns: 2 160px; column-gap: 8px; }
+/* Gästeseite: so sehen Empfänger einen Suwar-Link. Regeln: DESIGN.md */
+.g-kopf { max-width: 1200px; margin: 0 auto; padding: calc(32px + var(--sicher-oben)) 24px 16px; display: flex; flex-direction: column; gap: 8px; }
+.g-kopf h1 { margin: 0; font: 600 28px/1.1 var(--schrift-titel); }
+.g-kopf .klein { color: var(--leise); font-size: 15px; }
+.g-kopf .knopf { align-self: flex-start; margin-top: 8px; }
+.mauer { max-width: 1200px; margin: 0 auto; padding: 0 16px; columns: 2 160px; column-gap: 8px; }
 @media (min-width: 700px) { .mauer { columns: 3 220px; } }
 @media (min-width: 1100px) { .mauer { columns: 4 240px; } }
-.mauer button { position: relative; display: block; width: 100%; margin: 0 0 8px; padding: 0; border: none; border-radius: 8px; overflow: hidden; background: #E6E6E1; break-inside: avoid; min-height: 80px; }
+.mauer button { position: relative; display: block; width: 100%; margin: 0 0 8px; padding: 0; border: none; border-radius: 0; overflow: hidden; background: var(--flaeche); break-inside: avoid; min-height: 80px; }
 .mauer img { display: block; width: 100%; height: auto; }
-.mauer .marke { position: absolute; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 9px; background: rgba(0, 0, 0, .5); color: #fff; font-size: 11px; }
-.g-fuss { max-width: 1200px; margin: 16px auto 0; padding: 14px 20px calc(22px + var(--sicher-unten)); border-top: 1px solid var(--rand); font-size: 13px; color: var(--text2); display: flex; gap: 8px; align-items: center; }
-.ansicht a.rund { color: #fff; }
+/* Ausnahme Bildschleier: nur auf Fotos (DESIGN.md 3) */
+.mauer .marke { position: absolute; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 4px; padding: 0 8px; height: 18px; border-radius: var(--radius); background: rgba(0, 0, 0, .5); color: #FFFFFF; font-size: 12px; }
+.g-fuss { max-width: 1200px; margin: 16px auto 0; padding: 16px 24px calc(24px + var(--sicher-unten)); border-top: 1px solid var(--linie); font-size: 13px; color: var(--leise); display: flex; gap: 8px; align-items: center; }
+.ansicht a.rund { color: var(--text); }

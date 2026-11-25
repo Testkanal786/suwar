@@ -3,7 +3,11 @@
 Fotos und Videos aus der eigenen Nextcloud – als Web-App (PWA) für Android, iPad und Windows.
 Suwar spricht direkt vom Gerät mit der Nextcloud. Es gibt keinen eigenen Server, und im Code stehen keine Zugangsdaten.
 
-## Was Suwar kann (Stand 0.1.8 – Stufe 1, Bausteine 1–6)
+## Gestaltung
+
+Verbindliche Regeln in [`DESIGN.md`](DESIGN.md): Richtung „Stille Galerie“ (hell) mit „Nachthimmel“ als Darkmode, Schriften Fraunces und Inter (liegen in `fonts/`), fünf Farb-Tokens, Abstände auf 8-px-Skala, ein Eckenradius, keine Verläufe oder Schatten. Prüfstand: `node werkzeuge/pruefen/css-pruefen.js` und `python3 werkzeuge/pruefen/bilder.py`.
+
+## Was Suwar kann (Stand 0.1.9 – Stufe 1, Bausteine 1–6)
 
 - **Galerie** im Stil C: randloses Raster nach Tagen, Suche, Filter (Art, Bereich, Beleg, Personen, eigene Orte, Jahr, Monat), Schalter für Screenshots
 - **Kategorien** über einen Bauplan (`/Fotos/.fotoapp/kategorien.json`), in den Einstellungen erweiterbar, ohne neuen Code. Werte werden als Nextcloud-Tags gespeichert (`bereich:Privat`)
