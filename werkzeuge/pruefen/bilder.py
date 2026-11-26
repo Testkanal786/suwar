@@ -101,7 +101,15 @@ try:
                 seite.get_by_role('link', name='Galerie').or_(seite.get_by_role('button', name='Galerie')).first.click()
                 seite.wait_for_timeout(500)
                 filmstreifen(seite, 'grossansicht-oeffnen', lambda: seite.locator('.kachel').nth(1).click())
-                seite.keyboard.press('Escape')
+                seite.wait_for_timeout(800)
+                def herunterziehen():
+                    bx = seite.locator('.buehne').bounding_box()
+                    x, y = bx['x'] + bx['width'] / 2, bx['y'] + bx['height'] / 3
+                    seite.mouse.move(x, y); seite.mouse.down()
+                    for d in range(1, 9): seite.mouse.move(x, y + d * 24); seite.wait_for_timeout(16)
+                    seite.mouse.up()
+                seite.keyboard.press('ArrowRight'); seite.wait_for_timeout(800)  # Foto 3, damit die Galerie scrollen muss
+                filmstreifen(seite, 'herunterziehen-schliessen', herunterziehen)
                 seite.wait_for_timeout(600)
                 filmstreifen(seite, 'filter-blatt', lambda: seite.get_by_role('button', name='Filter').first.click())
             ctx.close()

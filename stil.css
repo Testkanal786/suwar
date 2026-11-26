@@ -32,6 +32,8 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
+/* Kein Zoom der ganzen Seite: zwei Finger ändern in der Galerie die Kachelgröße, in der Großansicht das Foto */
+html { touch-action: pan-x pan-y; }
 body { overscroll-behavior-y: contain; background: var(--grund); }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -82,9 +84,8 @@ h1, h2 { text-wrap: balance; }
 /* Galerie */
 .tag-kopf { padding: 24px 16px 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font: 600 22px/1.15 var(--schrift-titel); color: var(--text); }
 .tag-kopf > :not(:first-child) { font: 400 13px/1 var(--schrift-text); color: var(--leise); }
-.raster { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; }
-@media (min-width: 700px) { .raster { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
-@media (min-width: 1100px) { .raster { grid-template-columns: repeat(8, minmax(0, 1fr)); } .inhalt, .kopf { max-width: 1400px; width: 100%; margin: 0 auto; } }
+.raster { display: grid; grid-template-columns: repeat(var(--spalten, 4), minmax(0, 1fr)); gap: 2px; }
+@media (min-width: 1100px) { .inhalt, .kopf { max-width: 1400px; width: 100%; margin: 0 auto; } }
 .kachel { position: relative; aspect-ratio: 1; background: var(--flaeche); border: none; padding: 0; overflow: hidden; display: block; width: 100%; }
 .kachel img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity var(--dauer-mittel) ease; }
 .kachel img.da { opacity: 1; }
@@ -143,7 +144,12 @@ code { background: var(--flaeche); padding: 0 4px; border-radius: var(--radius);
 @media (min-width: 700px) { .schleier { align-items: center; } .blatt { border-radius: var(--radius); } }
 
 /* Großansicht – derselbe Grund wie die App (R1b/R2b) */
-.ansicht { position: fixed; inset: 0; z-index: 30; background: var(--grund); color: var(--text); display: flex; flex-direction: column; }
+.ansicht { position: fixed; inset: 0; z-index: 30; color: var(--text); display: flex; flex-direction: column; --deckung: 1; }
+/* Grund als eigene Ebene: beim Herunterziehen wird er durchsichtig und die Galerie scheint durch */
+.ansicht::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--grund); opacity: var(--deckung); transition: opacity var(--dauer-mittel) var(--kurve-standard); }
+.ansicht .ansicht-kopf, .ansicht .ansicht-fuss { opacity: var(--deckung); transition: opacity var(--dauer-mittel) var(--kurve-standard); }
+.ansicht.zieht::before, .ansicht.zieht .ansicht-kopf, .ansicht.zieht .ansicht-fuss { transition: none; }
+.ansicht.zieht .info, .ansicht.fliegt .info { opacity: 0; }
 .ansicht-kopf, .ansicht-fuss { display: flex; align-items: center; gap: 8px; padding: 8px; }
 .ansicht-kopf { padding-top: calc(8px + var(--sicher-oben)); }
 .ansicht-fuss { padding-bottom: calc(8px + var(--sicher-unten)); justify-content: space-around; }
@@ -232,3 +238,5 @@ code { background: var(--flaeche); padding: 0 4px; border-radius: var(--radius);
   .schleier.zu::before, .schleier.zu .blatt, .ansicht.zu, .toast.zu { animation: ausblenden var(--dauer-kurz) ease forwards; }
   .toast, .toast.zu { transform: translateX(-50%); }
 }
+/* Galerie-Zoom: Wechsel der Kachelgröße blendet weich über (View Transitions), Dauer aus den Tokens */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--dauer-kurz); animation-timing-function: var(--kurve-standard); }

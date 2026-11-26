@@ -2,7 +2,7 @@
 // Suwar – Oberfläche. Galerie, Großansicht, Aufräumen, Teilen, Hochladen, Einstellungen.
 /* global NC, Medien, SuwarStandort, SuwarLogo */
 (() => {
-  const VERSION = '0.1.9';
+  const VERSION = '0.1.10';
   const app = document.getElementById('app');
   const pad = (n) => String(n).padStart(2, '0');
   const istAndroid = /Android/i.test(navigator.userAgent);
@@ -66,6 +66,25 @@
   const groesseText = (b) => (b > 1e9 ? (b / 1e9).toFixed(1) + ' GB' : b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB');
   const dauerText = (s) => `${Math.floor(s / 60)}:${pad(Math.floor(s % 60))}`;
 
+  // Dauern und Kurven kommen aus stil.css (DESIGN.md 7), nicht aus dem Code
+  const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const dauer = (name) => parseFloat(token(name)) || 0;
+  const uebergang = (eig, d = '--dauer-mittel', k = '--kurve-standard') => eig.split(',').map((e) => `${e.trim()} var(${d}) var(${k})`).join(', ');
+
+  // Kachel eines Fotos in der Galerie finden – wenn nötig weiter rendern – und so scrollen, dass sie zu sehen ist
+  function kachelZeigen(m) {
+    if (!m || !rasterEl || !rasterEl.isConnected) return null;
+    const idx = aktuelleListe.indexOf(m);
+    if (idx >= S.sichtbar) { S.sichtbar = idx + 120; rasterNeu(); }
+    const k = rasterEl.querySelector(`.kachel[data-id="${CSS.escape(m.id)}"]`);
+    if (!k) return null;
+    const r = k.getBoundingClientRect();
+    const oben = document.querySelector('.kopf') ? document.querySelector('.kopf').getBoundingClientRect().bottom : 0;
+    const unten = innerHeight - 80;
+    if (r.top < oben || r.bottom > unten) window.scrollTo({ top: window.scrollY + r.top - (oben + unten - r.height) / 2, behavior: 'instant' });
+    return k;
+  }
+
   /* ---------- Ebenen (Blätter, Großansicht) mit Zurück-Taste ---------- */
   const ebenen = [];
   function ebeneOeffnen(el, beimSchliessen) {
@@ -83,6 +102,8 @@
     if (e.beimSchliessen) e.beimSchliessen();
     return true;
   }
+  // Der Browser soll beim Zurück-Schritt keine alte Scrollposition wiederherstellen – das macht Suwar selbst (Foto bleibt im Blick)
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.addEventListener('popstate', () => { if (!obersteSchliessen()) zeichne(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && ebenen.length && !ebenen[ebenen.length - 1].el.classList.contains('ansicht')) history.back(); });
   function blatt(titel, inhalt, beimSchliessen) {
@@ -311,6 +332,65 @@
     }
     fuelle(rasterEl, ...teile);
   }
+  /* Galerie-Zoom: zwei Finger (Trackpad oder Strg + Mausrad am Laptop) ändern, wie viele Fotos nebeneinander stehen.
+     Das Foto unter den Fingern bleibt dabei an seinem Platz. Die Wahl wird auf dem Gerät gemerkt. */
+  const spaltenGrenzen = () => [2, Math.max(4, Math.min(12, Math.floor(innerWidth / 48)))];
+  const spaltenStandard = () => (innerWidth >= 1100 ? 8 : innerWidth >= 700 ? 6 : 4);
+  let spalten = (() => { try { const n = parseInt(localStorage.getItem('suwar-spalten') || '', 10); return Number.isFinite(n) ? n : 0; } catch { return 0; } })();
+  function spaltenAnwenden() {
+    const [min, max] = spaltenGrenzen();
+    document.documentElement.style.setProperty('--spalten', String(Math.min(max, Math.max(min, spalten || spaltenStandard()))));
+  }
+  spaltenAnwenden();
+  window.addEventListener('resize', spaltenAnwenden);
+  let letzterPinch = 0;
+  function spaltenAendern(richtung, x, y) {
+    const [min, max] = spaltenGrenzen();
+    const alt = Math.min(max, Math.max(min, spalten || spaltenStandard()));
+    const neu = Math.min(max, Math.max(min, alt + richtung));
+    letzterPinch = Date.now();
+    if (neu === alt) return;
+    // Anker: die Kachel unter den Fingern (oder die erste sichtbare) bleibt an derselben Stelle
+    const unter = document.elementFromPoint(x, y);
+    const anker = (unter && unter.closest('.kachel')) || [...document.querySelectorAll('.kachel')].find((k) => k.getBoundingClientRect().bottom > 0);
+    const r1 = anker && anker.getBoundingClientRect();
+    const anteil = r1 ? (y - r1.top) / r1.height : 0;
+    const umbauen = () => {
+      spalten = neu;
+      try { localStorage.setItem('suwar-spalten', String(neu)); } catch { /* nur für diese Sitzung */ }
+      spaltenAnwenden();
+      if (anker && anker.isConnected) { const r2 = anker.getBoundingClientRect(); window.scrollBy(0, r2.top - (y - anteil * r2.height)); }
+    };
+    if (document.startViewTransition && !wenigBewegung()) document.startViewTransition(umbauen); else umbauen();
+  }
+  const galerieOffen = () => S.sicht === 'galerie' && !ebenen.length && !!rasterEl && rasterEl.isConnected;
+  let pinch = null;
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 2 || !galerieOffen()) return;
+    const [a, b] = e.touches;
+    pinch = { d0: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) };
+    letzterPinch = Date.now();
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    const [a, b] = e.touches;
+    const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    const mx = (a.clientX + b.clientX) / 2, my = (a.clientY + b.clientY) / 2;
+    // Finger auseinander = größere Fotos (weniger Spalten), zusammen = mehr Fotos
+    if (d / pinch.d0 > 1.3) { spaltenAendern(-1, mx, my); pinch.d0 = d; }
+    else if (d / pinch.d0 < 0.77) { spaltenAendern(1, mx, my); pinch.d0 = d; }
+  }, { passive: false });
+  document.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; });
+  document.addEventListener('gesturestart', (e) => { if (galerieOffen()) e.preventDefault(); }); // Safari am iPad
+  let radSumme = 0;
+  window.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey || !galerieOffen()) return;
+    e.preventDefault();
+    radSumme += e.deltaY;
+    if (Math.abs(radSumme) > 60) { spaltenAendern(radSumme > 0 ? 1 : -1, e.clientX, e.clientY); radSumme = 0; }
+  }, { passive: false });
+
   function kachel(m, index) {
     const gewaehlt = S.auswahl && S.auswahl.has(m.id);
     const el = h('button', { class: 'kachel' + (gewaehlt ? ' gewaehlt' : ''), 'data-id': m.id, 'aria-label': `${m.art} vom ${datumKurz(m.datum)}`, 'aria-pressed': S.auswahl ? String(!!gewaehlt) : null },
@@ -319,11 +399,11 @@
       S.auswahl ? h('span', { class: 'auswahl' }) : null);
     let druck = 0;
     let lang = false;
-    el.addEventListener('pointerdown', () => { lang = false; druck = setTimeout(() => { lang = true; if (!S.auswahl) S.auswahl = new Set(); S.auswahl.add(m.id); zeichne(); }, 520); });
+    el.addEventListener('pointerdown', () => { lang = false; druck = setTimeout(() => { if (pinch) return; lang = true; if (!S.auswahl) S.auswahl = new Set(); S.auswahl.add(m.id); zeichne(); }, 520); });
     for (const t of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(t, () => clearTimeout(druck));
     el.addEventListener('contextmenu', (e) => e.preventDefault());
     el.addEventListener('click', () => {
-      if (lang) return;
+      if (lang || pinch || Date.now() - letzterPinch < 400) return;
       if (S.auswahl) { if (S.auswahl.has(m.id)) S.auswahl.delete(m.id); else S.auswahl.add(m.id); el.classList.toggle('gewaehlt'); el.setAttribute('aria-pressed', String(S.auswahl.has(m.id))); chipsNeu(); return; }
       ansichtOeffnen(aktuelleListe, index);
     });
@@ -449,7 +529,7 @@
     function blaettern(r) {
       const n = i + r;
       const b = bild();
-      if (n < 0 || n >= liste.length) { if (b) { b.style.transition = 'transform .25s cubic-bezier(.2,.8,.2,1)'; b.style.transform = ''; } return; }
+      if (n < 0 || n >= liste.length) { if (b) { b.style.transition = uebergang('transform', '--dauer-mittel', '--kurve-blatt'); b.style.transform = ''; } return; }
       i = n;
       zeigen(r);
     }
@@ -474,7 +554,7 @@
       const mx = (r.width * (s - 1)) / 2;
       const my = (r.height * (s - 1)) / 2;
       Object.assign(zoom, { s, tx: s === 1 ? 0 : Math.min(mx, Math.max(-mx, tx)), ty: s === 1 ? 0 : Math.min(my, Math.max(-my, ty)) });
-      b.style.transition = weich ? 'transform .2s ease-out' : 'none';
+      b.style.transition = weich ? uebergang('transform') : 'none';
       b.style.transform = zoom.s === 1 ? '' : `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.s})`;
       if (zoom.s > 1.8) originalNachladen();
     }
@@ -514,7 +594,7 @@
       if (geste.art === 'pinch' && pkt.length === 2) {
         const d = Math.hypot(pkt[0].x - pkt[1].x, pkt[0].y - pkt[1].y);
         const mitte = relativ((pkt[0].x + pkt[1].x) / 2, (pkt[0].y + pkt[1].y) / 2);
-        const s2 = Math.min(6, Math.max(1, (geste.s0 * d) / geste.d0));
+        const s2 = Math.max(1, (geste.s0 * d) / geste.d0);
         // Zoom um den Startmittelpunkt, dazu Verschiebung um die Bewegung der Fingermitte
         zoomSetzen(s2, mitte.x - (s2 * (geste.m0.x - geste.t0.x)) / geste.s0, mitte.y - (s2 * (geste.m0.y - geste.t0.y)) / geste.s0);
       } else if (geste.art === 'schieben') {
@@ -522,7 +602,18 @@
       } else if (geste.art === 'wischen') {
         const b = bild();
         const dx = e.clientX - geste.x0;
-        if (b && Math.abs(dx) > Math.abs(e.clientY - geste.y0)) { b.style.transition = 'none'; b.style.transform = `translateX(${dx}px)`; b.style.opacity = String(1 - Math.min(0.5, Math.abs(dx) / 800)); }
+        const dy = e.clientY - geste.y0;
+        if (!geste.achse && Math.hypot(dx, dy) > 10) geste.achse = Math.abs(dy) > Math.abs(dx) && dy > 0 ? 'runter' : 'quer';
+        if (b && geste.achse === 'quer') { b.style.transition = 'none'; b.style.transform = `translateX(${dx}px)`; b.style.opacity = String(1 - Math.min(0.5, Math.abs(dx) / 800)); }
+        if (b && geste.achse === 'runter') {
+          // Bild folgt dem Finger und wird etwas kleiner, dahinter scheint die Galerie durch
+          const y = Math.max(0, dy);
+          geste.letzt = { y, t: e.timeStamp, vy: geste.letzt ? (y - geste.letzt.y) / Math.max(1, e.timeStamp - geste.letzt.t) : 0 };
+          b.style.transition = 'none';
+          b.style.transform = `translate(${dx * 0.6}px, ${y}px) scale(${1 - Math.min(0.3, y / 1200)})`;
+          el.classList.add('zieht');
+          el.style.setProperty('--deckung', String(1 - Math.min(1, y / 360)));
+        }
       }
       if (Math.hypot(e.clientX - (geste.x0 || 0), e.clientY - (geste.y0 || 0)) > 10) geste.bewegt = true;
     });
@@ -530,17 +621,27 @@
       if (!finger.has(e.pointerId)) return;
       finger.delete(e.pointerId);
       if (!geste) return;
-      if (geste.art === 'wischen' && finger.size === 0) {
+      if (geste.art === 'wischen' && finger.size === 0 && geste.achse === 'runter') {
+        const dy = e.clientY - geste.y0;
+        // weit genug oder schnell genug gezogen → zurück in die Galerie, sonst zurückschnappen
+        if (dy > 120 || (dy > 40 && geste.letzt && geste.letzt.vy > 0.6)) zurKachel();
+        else {
+          const b = bild();
+          el.classList.remove('zieht');
+          el.style.setProperty('--deckung', '1');
+          if (b) { b.style.transition = uebergang('transform', '--dauer-mittel', '--kurve-blatt'); b.style.transform = ''; }
+        }
+      } else if (geste.art === 'wischen' && finger.size === 0) {
         const dx = e.clientX - geste.x0;
         const dy = e.clientY - geste.y0;
         const b = bild();
         const ziel = i + (dx < 0 ? 1 : -1);
         if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) && ziel >= 0 && ziel < liste.length) {
           letzterTipp = null;
-          if (b) { b.style.transition = 'transform .18s ease-in, opacity .18s ease-in'; b.style.transform = `translateX(${dx < 0 ? -45 : 45}%)`; b.style.opacity = '0'; }
+          if (b) { b.style.transition = uebergang('transform, opacity', '--dauer-kurz'); b.style.transform = `translateX(${dx < 0 ? -45 : 45}%)`; b.style.opacity = '0'; }
           blaettern(dx < 0 ? 1 : -1);
         } else {
-          if (b) { b.style.transition = 'transform .28s cubic-bezier(.2,.8,.2,1), opacity .28s'; b.style.transform = ''; b.style.opacity = ''; }
+          if (b) { b.style.transition = uebergang('transform, opacity', '--dauer-mittel', '--kurve-blatt'); b.style.transform = ''; b.style.opacity = ''; }
           if (!geste.bewegt) doppeltipp(e);
         }
       } else if (geste.art === 'schieben' && finger.size === 0 && !geste.bewegt) doppeltipp(e);
@@ -589,7 +690,34 @@
         toast('Standbild gespeichert: ' + name);
       } catch (e) { fehler(e); }
     }
-    const zu = ebeneOeffnen(el, () => { aufraeumen(); rasterNeu(); });
+    // Schließen per Herunterziehen: Galerie an die Stelle des Fotos scrollen, Bild fliegt in seine Kachel
+    let fliegt = false;
+    function zurKachel() {
+      if (fliegt) return;
+      fliegt = true;
+      const m = liste[i];
+      const b = bild();
+      const k = kachelZeigen(m);
+      el.classList.remove('zieht');
+      el.classList.add('fliegt');
+      if (!b || !k || wenigBewegung()) { zu(); return; }
+      // Ziel in Koordinaten der unverschobenen Bühne: Mitte auf die Kachelmitte, Bild deckt die Kachel ab
+      const r0 = buehne.getBoundingClientRect();
+      const v = b.naturalWidth && b.naturalHeight ? b.naturalWidth / b.naturalHeight : 1;
+      const breit = Math.min(r0.width, r0.height * v), hoch = breit / v; // sichtbares Bild (contain)
+      const t = k.getBoundingClientRect();
+      const ziel = `translate(${t.left + t.width / 2 - (r0.left + r0.width / 2)}px, ${t.top + t.height / 2 - (r0.top + r0.height / 2)}px) scale(${Math.min(t.width / breit, t.height / hoch)})`; // passt in die Kachel, ragt nicht darüber hinaus
+      const jetzt = getComputedStyle(b).transform;
+      b.style.transition = 'none';
+      const flug = b.animate([
+        { transform: jetzt === 'none' ? 'translate(0px, 0px) scale(1)' : jetzt, opacity: 1 },
+        { transform: ziel, opacity: 1, offset: 0.75 },
+        { transform: ziel, opacity: 0 },
+      ], { duration: dauer('--dauer-lang'), easing: token('--kurve-standard'), fill: 'forwards' });
+      el.style.setProperty('--deckung', '0');
+      flug.finished.then(zu, zu);
+    }
+    const zu = ebeneOeffnen(el, () => { aufraeumen(); rasterNeu(); kachelZeigen(liste[i]); });
     el.focus();
     zeigen();
   }
