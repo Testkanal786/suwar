@@ -43,6 +43,8 @@ Nachts derselbe Aufbau auf tiefblauem Grund, die Fotos leuchten, Gold statt Blau
   1. *Bildschleier* `rgba(0,0,0,.5)` mit Weiß – nur auf Fotos (Video-Marke, Auswahlkreis), weil das Foto jede Farbe haben kann.
   2. *Abdunklung* `rgba(0,0,0,.4)` – nur hinter Blättern und Dialogen.
   3. Das Logo (`js/logo.js`) und die Fotos selbst haben eigene Farben.
+  4. Das **App-Symbol auf dem Startbildschirm** (`icons/bergstern-*.png`, ab 0.1.11) ist eine eigene Grafik mit Glanz, Verlauf und Schatten.
+     Es erscheint nur außerhalb der App (Android, iPad, Desktop-Startmenü). In der App bleiben das flache Logo und das Favicon (`icons/stern-64.png`).
 
 ## 4. Abstände – 8-Pixel-Skala
 
